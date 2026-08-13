@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Solus Welcome
+Comment=Welcome and first-run setup for Solus
+Exec=/usr/bin/solus-welcome
+Icon=/usr/share/solus-welcome/assets/logo.svg
+Terminal=false
+Categories=System;Settings;
