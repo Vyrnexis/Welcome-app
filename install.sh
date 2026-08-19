@@ -31,6 +31,7 @@ esac
 
 if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
   install -Dm755 "$APP_BIN" /usr/bin/solus-welcome
+  install -Dm644 "$ROOT_DIR/assets/config.json" /usr/share/solus-welcome/assets/config.json
   install -Dm644 "$ROOT_DIR/assets/logo.svg" /usr/share/solus-welcome/assets/logo.svg
   install -Dm644 "$ROOT_DIR/assets/budgie.svg" /usr/share/solus-welcome/assets/budgie.svg
   install -Dm644 "$ROOT_DIR/assets/gnome.svg" /usr/share/solus-welcome/assets/gnome.svg
@@ -39,6 +40,7 @@ if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
   install -Dm644 "$ROOT_DIR/solus-welcome.desktop" /usr/share/applications/solus-welcome.desktop
 else
   sudo install -Dm755 "$APP_BIN" /usr/bin/solus-welcome
+  sudo install -Dm644 "$ROOT_DIR/assets/config.json" /usr/share/solus-welcome/assets/config.json
   sudo install -Dm644 "$ROOT_DIR/assets/logo.svg" /usr/share/solus-welcome/assets/logo.svg
   sudo install -Dm644 "$ROOT_DIR/assets/budgie.svg" /usr/share/solus-welcome/assets/budgie.svg
   sudo install -Dm644 "$ROOT_DIR/assets/gnome.svg" /usr/share/solus-welcome/assets/gnome.svg

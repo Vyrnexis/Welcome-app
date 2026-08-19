@@ -25,19 +25,19 @@ func navIcon(key string) fyne.Resource {
 	}
 }
 
-func welcomeCardIcon(action welcomeAction) fyne.Resource {
+func welcomeCardIcon(action string) fyne.Resource {
 	switch action {
-	case actionUpdates:
+	case "updates":
 		return theme.DownloadIcon()
-	case actionSoftware:
+	case "software":
 		return theme.ComputerIcon()
-	case actionCustomise:
+	case "customise":
 		return theme.ColorPaletteIcon()
-	case actionLearn:
+	case "learn":
 		return theme.DocumentIcon()
-	case actionSettings:
+	case "settings":
 		return theme.SettingsIcon()
-	case actionDonate:
+	case "donate":
 		return theme.InfoIcon()
 	default:
 		return theme.InfoIcon()

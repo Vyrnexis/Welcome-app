@@ -32,6 +32,10 @@ func main() {
 
 	baseDir := findBaseDir()
 
+	if err := LoadContent(baseDir); err != nil {
+		fmt.Println("Warning: Failed to load config.json:", err)
+	}
+
 	ui := &welcomeUI{
 		app:        a,
 		window:     w,
@@ -71,7 +75,7 @@ func (ui *welcomeUI) buildSidebar() fyne.CanvasObject {
 		widget.NewSeparator(),
 	}
 
-	for _, item := range navItems {
+	for _, item := range Content.NavItems {
 		item := item
 		button := widget.NewButtonWithIcon(item.Label, navIcon(item.Key), func() {
 			ui.selectPage(item.Key)
@@ -134,9 +138,9 @@ func (ui *welcomeUI) page(page string) fyne.CanvasObject {
 	case "customise":
 		return ui.customisePage()
 	case "support":
-		return ui.linkPage("Support", "Find official help, community discussion, and issue tracking.", supportLinks, "Open")
+		return ui.linkPage("Support", "Find official help, community discussion, and issue tracking.", Content.SupportLinks, "Open")
 	case "contribute":
-		return ui.linkPage("Contribute", "Solus is built by people who test, document, package, develop, and support the project.", contributeLinks, "Learn more")
+		return ui.linkPage("Contribute", "Solus is built by people who test, document, package, develop, and support the project.", Content.ContributeLinks, "Learn more")
 	default:
 		return ui.welcomePage()
 	}
@@ -151,8 +155,8 @@ func (ui *welcomeUI) welcomePage() fyne.CanvasObject {
 	heroText := container.NewVBox(title, subtitle, layout.NewSpacer())
 	hero := responsiveGrid(360, 2, heroText, ui.systemCard())
 
-	cards := make([]fyne.CanvasObject, 0, len(welcomeCards))
-	for _, card := range welcomeCards {
+	cards := make([]fyne.CanvasObject, 0, len(Content.WelcomeCards))
+	for _, card := range Content.WelcomeCards {
 		card := card
 		cards = append(cards, ui.welcomeCard(card))
 	}
@@ -206,7 +210,7 @@ func (ui *welcomeUI) welcomeCard(card WelcomeCard) fyne.CanvasObject {
 }
 
 func (ui *welcomeUI) customisePage() fyne.CanvasObject {
-	actions, ok := desktopActions[ui.desktop.Key]
+	actions, ok := Content.DesktopActions[ui.desktop.Key]
 	if !ok {
 		actions = []DesktopAction{
 			{Title: "Open Settings", Body: "Desktop-specific settings were not detected."},
@@ -263,23 +267,23 @@ func (ui *welcomeUI) standardCard(title, body, buttonText string, callback func(
 	return widget.NewCard("", "", container.NewVBox(titleLabel, widget.NewSeparator(), bodyLabel, layout.NewSpacer(), button))
 }
 
-func (ui *welcomeUI) openWelcomeAction(action welcomeAction) {
+func (ui *welcomeUI) openWelcomeAction(action string) {
 	switch action {
-	case actionUpdates:
+	case "updates":
 		if err := launchTerminalCommand("Update your system", "sudo eopkg upgrade", true); err != nil {
 			dialog.ShowInformation("Update your system", err.Error(), ui.window)
 		}
-	case actionSoftware:
-		ui.openDesktopCommand("Install common apps", softwareCommands, CommandInfo{[]string{"plasma-discover"}, "No supported software centre was found."})
-	case actionCustomise:
-		ui.openDesktopCommand("Customise your desktop", customiseCommands, CommandInfo{[]string{"budgie-desktop-settings"}, "No supported desktop settings application was found."})
-	case actionLearn:
+	case "software":
+		ui.openDesktopCommand("Install common apps", Content.SoftwareCommands, CommandInfo{[]string{"plasma-discover"}, "No supported software centre was found."})
+	case "customise":
+		ui.openDesktopCommand("Customise your desktop", Content.CustomiseCommands, CommandInfo{[]string{"budgie-desktop-settings"}, "No supported desktop settings application was found."})
+	case "learn":
 		if err := openURL(ui.app, "https://help.getsol.us/docs/user/intro"); err != nil {
 			dialog.ShowError(err, ui.window)
 		}
-	case actionSettings:
-		ui.openDesktopCommand("System Settings", systemSettingsCommands, CommandInfo{[]string{"budgie-control-center"}, "No supported settings tool was found."})
-	case actionDonate:
+	case "settings":
+		ui.openDesktopCommand("System Settings", Content.SystemSettingsCommands, CommandInfo{[]string{"budgie-control-center"}, "No supported settings tool was found."})
+	case "donate":
 		if err := openURL(ui.app, "https://opencollective.com/getsolus"); err != nil {
 			dialog.ShowError(err, ui.window)
 		}
