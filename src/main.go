@@ -34,7 +34,7 @@ func main() {
 	baseDir := findBaseDir()
 
 	if err := LoadContent(baseDir); err != nil {
-		fmt.Println("Warning: Failed to load config.json:", err)
+		fmt.Println("Warning: Failed to load config.toml:", err)
 	}
 
 	ui := &welcomeUI{

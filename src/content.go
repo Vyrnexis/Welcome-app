@@ -1,59 +1,56 @@
 package main
 
 import (
-	"encoding/json"
-	"os"
 	"path/filepath"
+
+	"github.com/BurntSushi/toml"
 )
 
 type CommandInfo struct {
-	Command []string `json:"Command"`
-	Missing string   `json:"Missing"`
+	Command []string `toml:"Command"`
+	Missing string   `toml:"Missing"`
 }
 
 type WelcomeCard struct {
-	Title  string `json:"Title"`
-	Body   string `json:"Body"`
-	Button string `json:"Button"`
-	Action string `json:"Action"`
+	Title  string `toml:"Title"`
+	Body   string `toml:"Body"`
+	Button string `toml:"Button"`
+	Action string `toml:"Action"`
 }
 
 type LinkCard struct {
-	Title string `json:"Title"`
-	Body  string `json:"Body"`
-	URL   string `json:"URL"`
+	Title string `toml:"Title"`
+	Body  string `toml:"Body"`
+	URL   string `toml:"URL"`
 }
 
 type DesktopAction struct {
-	Title   string   `json:"Title"`
-	Body    string   `json:"Body"`
-	Command []string `json:"Command"`
+	Title   string   `toml:"Title"`
+	Body    string   `toml:"Body"`
+	Command []string `toml:"Command"`
 }
 
 type NavItem struct {
-	Key   string `json:"Key"`
-	Label string `json:"Label"`
+	Key   string `toml:"Key"`
+	Label string `toml:"Label"`
 }
 
 type AppContent struct {
-	NavItems               []NavItem                  `json:"NavItems"`
-	WelcomeCards           []WelcomeCard              `json:"WelcomeCards"`
-	SoftwareCommands       map[string]CommandInfo     `json:"SoftwareCommands"`
-	CustomiseCommands      map[string]CommandInfo     `json:"CustomiseCommands"`
-	SystemSettingsCommands map[string]CommandInfo     `json:"SystemSettingsCommands"`
-	DesktopActions         map[string][]DesktopAction `json:"DesktopActions"`
-	SupportLinks           []LinkCard                 `json:"SupportLinks"`
-	ContributeLinks        []LinkCard                 `json:"ContributeLinks"`
+	NavItems               []NavItem                  `toml:"NavItems"`
+	WelcomeCards           []WelcomeCard              `toml:"WelcomeCards"`
+	SoftwareCommands       map[string]CommandInfo     `toml:"SoftwareCommands"`
+	CustomiseCommands      map[string]CommandInfo     `toml:"CustomiseCommands"`
+	SystemSettingsCommands map[string]CommandInfo     `toml:"SystemSettingsCommands"`
+	DesktopActions         map[string][]DesktopAction `toml:"DesktopActions"`
+	SupportLinks           []LinkCard                 `toml:"SupportLinks"`
+	ContributeLinks        []LinkCard                 `toml:"ContributeLinks"`
 }
 
 var Content AppContent
 
-// LoadContent reads and parses the external configuration file.
+// LoadContent reads and parses the external TOML configuration file.
 func LoadContent(baseDir string) error {
-	path := filepath.Join(baseDir, "assets", "config.json")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(data, &Content)
+	path := filepath.Join(baseDir, "assets", "config.toml")
+	_, err := toml.DecodeFile(path, &Content)
+	return err
 }

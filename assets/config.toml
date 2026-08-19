@@ -1,0 +1,255 @@
+# Solus Welcome Application Configuration
+
+[[NavItems]]
+Key = "welcome"
+Label = "Welcome"
+
+[[NavItems]]
+Key = "customise"
+Label = "Customise"
+
+[[NavItems]]
+Key = "support"
+Label = "Support"
+
+[[NavItems]]
+Key = "contribute"
+Label = "Contribute"
+
+
+[[WelcomeCards]]
+Title = "Update your system"
+Body = "Keep your system secure and up to date with the latest packages."
+Button = "Check for Updates"
+Action = "updates"
+
+[[WelcomeCards]]
+Title = "Install common apps"
+Body = "Browse and install apps like browsers, codecs, Steam, Discord, and more."
+Button = "Open Software Centre"
+Action = "software"
+
+[[WelcomeCards]]
+Title = "Customise your desktop"
+Body = "Make Solus feel like home. Adjust themes, layout, appearance, and more."
+Button = "Open System Settings"
+Action = "customise"
+
+[[WelcomeCards]]
+Title = "Learn Solus"
+Body = "Find help, documentation, and community support resources."
+Button = "Visit Help Centre"
+Action = "learn"
+
+[[WelcomeCards]]
+Title = "System Settings"
+Body = "Configure displays, printers, Bluetooth, audio, power, and more."
+Button = "Open Settings"
+Action = "settings"
+
+[[WelcomeCards]]
+Title = "Donate to Solus"
+Body = "Support Solus infrastructure, hosting, development, and community work."
+Button = "Donate"
+Action = "donate"
+
+
+[SoftwareCommands.gnome]
+Command = ["gnome-software"]
+Missing = "GNOME Software is not installed."
+
+[SoftwareCommands.budgie]
+Command = ["plasma-discover"]
+Missing = "Discover is not installed."
+
+[SoftwareCommands.kde]
+Command = ["plasma-discover"]
+Missing = "Discover is not installed."
+
+
+[CustomiseCommands.budgie]
+Command = ["budgie-desktop-settings"]
+Missing = "Budgie Desktop Settings is not installed."
+
+[CustomiseCommands.kde]
+Command = ["kcmshell6", "kcm_lookandfeel"]
+Missing = "KDE appearance settings are not installed."
+
+[CustomiseCommands.gnome]
+Command = ["gnome-control-center", "background"]
+Missing = "GNOME appearance settings are not installed."
+
+[CustomiseCommands.xfce]
+Command = ["xfce4-appearance-settings"]
+Missing = "Xfce Appearance settings are not installed."
+
+
+[SystemSettingsCommands.budgie]
+Command = ["budgie-control-center"]
+Missing = "Budgie Control Center is not installed."
+
+[SystemSettingsCommands.kde]
+Command = ["systemsettings"]
+Missing = "KDE System Settings is not installed."
+
+[SystemSettingsCommands.gnome]
+Command = ["gnome-control-center", "display"]
+Missing = "GNOME display settings are not installed."
+
+[SystemSettingsCommands.xfce]
+Command = ["xfce4-settings-manager"]
+Missing = "Xfce Settings Manager is not installed."
+
+
+# Desktop-specific actions for the Customise page
+[[DesktopActions.kde]]
+Title = "System Settings"
+Body = "Launch the KDE Plasma settings centre."
+Command = ["systemsettings"]
+[[DesktopActions.kde]]
+Title = "Appearance"
+Body = "Change Plasma style, colours, icons, and global theme."
+Command = ["kcmshell6", "kcm_lookandfeel"]
+[[DesktopActions.kde]]
+Title = "Colours"
+Body = "Adjust KDE colour schemes."
+Command = ["kcmshell6", "kcm_colors"]
+[[DesktopActions.kde]]
+Title = "Displays"
+Body = "Configure monitors, scale, refresh rate, and layout."
+Command = ["kcmshell6", "kcm_kscreen"]
+
+[[DesktopActions.budgie]]
+Title = "Budgie Desktop Settings"
+Body = "Adjust panels, applets, Raven, desktop icons, and style."
+Command = ["budgie-desktop-settings"]
+[[DesktopActions.budgie]]
+Title = "System Settings"
+Body = "Open Budgie Control Center for system-wide preferences."
+Command = ["budgie-control-center"]
+[[DesktopActions.budgie]]
+Title = "Wallpapers"
+Body = "Choose desktop backgrounds."
+Command = ["budgie-control-center", "background"]
+[[DesktopActions.budgie]]
+Title = "Notifications"
+Body = "Manage notification behaviour."
+Command = ["budgie-control-center", "notifications"]
+[[DesktopActions.budgie]]
+Title = "Sound"
+Body = "Configure speakers, microphones, and alert sounds."
+Command = ["budgie-control-center", "sound"]
+[[DesktopActions.budgie]]
+Title = "Printers"
+Body = "Add and manage printers."
+Command = ["budgie-control-center", "printers"]
+[[DesktopActions.budgie]]
+Title = "Power"
+Body = "Configure power saving and suspend behaviour."
+Command = ["budgie-control-center", "power"]
+[[DesktopActions.budgie]]
+Title = "Keyboard and shortcuts"
+Body = "Adjust typing settings and keyboard shortcuts."
+Command = ["budgie-control-center", "keyboard"]
+
+[[DesktopActions.gnome]]
+Title = "Settings"
+Body = "Launch GNOME Settings."
+Command = ["gnome-control-center"]
+[[DesktopActions.gnome]]
+Title = "Appearance"
+Body = "Change style, background, and dock options."
+Command = ["gnome-control-center", "background"]
+[[DesktopActions.gnome]]
+Title = "Displays"
+Body = "Configure monitors, scale, refresh rate, and layout."
+Command = ["gnome-control-center", "display"]
+[[DesktopActions.gnome]]
+Title = "Sound"
+Body = "Configure speakers, microphones, and alert sounds."
+Command = ["gnome-control-center", "sound"]
+[[DesktopActions.gnome]]
+Title = "Power"
+Body = "Configure power saving and suspend behaviour."
+Command = ["gnome-control-center", "power"]
+[[DesktopActions.gnome]]
+Title = "Extensions"
+Body = "Manage GNOME Shell extensions."
+Command = ["gnome-extensions-app"]
+
+[[DesktopActions.xfce]]
+Title = "Settings Manager"
+Body = "Launch the Xfce settings manager."
+Command = ["xfce4-settings-manager"]
+[[DesktopActions.xfce]]
+Title = "Appearance"
+Body = "Change GTK theme, icons, fonts, and toolbar style."
+Command = ["xfce4-appearance-settings"]
+[[DesktopActions.xfce]]
+Title = "Displays"
+Body = "Configure monitors, scale, refresh rate, and layout."
+Command = ["xfce4-display-settings"]
+[[DesktopActions.xfce]]
+Title = "Window Manager"
+Body = "Configure window decorations, focus, and keyboard shortcuts."
+Command = ["xfwm4-settings"]
+[[DesktopActions.xfce]]
+Title = "Panel"
+Body = "Configure Xfce panels, items, and layout."
+Command = ["xfce4-panel", "--preferences"]
+[[DesktopActions.xfce]]
+Title = "Power Manager"
+Body = "Configure power saving and display blanking."
+Command = ["xfce4-power-manager-settings"]
+
+
+[[SupportLinks]]
+Title = "Solus Help Centre"
+Body = "Start with official help and troubleshooting."
+URL = "https://help.getsol.us/"
+
+[[SupportLinks]]
+Title = "Forums"
+Body = "Ask questions and share solutions with the community."
+URL = "https://discuss.getsol.us/"
+
+[[SupportLinks]]
+Title = "Matrix Community"
+Body = "Join the Solus Matrix room for real-time community discussion."
+URL = "https://matrix.to/#/#solus:matrix.org"
+
+[[SupportLinks]]
+Title = "Mastodon"
+Body = "Follow Solus project updates on Mastodon."
+URL = "https://floss.social/@getsolus"
+
+[[SupportLinks]]
+Title = "Bluesky"
+Body = "Follow Solus project updates on Bluesky."
+URL = "https://bsky.app/profile/getsolus.bsky.social"
+
+
+[[ContributeLinks]]
+Title = "Report Bugs"
+Body = "File high-quality reports with logs and clear reproduction steps."
+URL = "https://getsol.us/contribute/report-bugs"
+
+[[ContributeLinks]]
+Title = "Documentation"
+Body = "Improve guides for new and experienced Solus users."
+URL = "https://getsol.us/contribute/documentation"
+
+[[ContributeLinks]]
+Title = "Packaging"
+Body = "Help maintain software packages for the repository."
+URL = "https://getsol.us/contribute/packaging"
+
+[[ContributeLinks]]
+Title = "Development"
+Body = "Contribute to Solus tooling and desktop integration."
+URL = "https://getsol.us/contribute/development"
+
+[[ContributeLinks]]
+Title = "Donations"
+Body = "Support project infrastructure and ongoing work."
+URL = "https://getsol.us/contribute/donations"

@@ -14,13 +14,18 @@ func TestLoadContent(t *testing.T) {
 		t.Fatalf("failed to create assets dir: %v", err)
 	}
 
-	// Write a minimal dummy config.json
-	dummyConfig := []byte(`{
-		"NavItems": [{"Key": "test", "Label": "Test Label"}],
-		"WelcomeCards": [{"Title": "Test Card", "Action": "updates"}]
-	}`)
+	// Write a minimal dummy config.toml
+	dummyConfig := []byte(`
+[[NavItems]]
+Key = "test"
+Label = "Test Label"
 
-	configPath := filepath.Join(assetsDir, "config.json")
+[[WelcomeCards]]
+Title = "Test Card"
+Action = "updates"
+`)
+	
+	configPath := filepath.Join(assetsDir, "config.toml")
 	if err := os.WriteFile(configPath, dummyConfig, 0644); err != nil {
 		t.Fatalf("failed to write dummy config: %v", err)
 	}
@@ -34,7 +39,7 @@ func TestLoadContent(t *testing.T) {
 	if len(Content.NavItems) != 1 || Content.NavItems[0].Key != "test" {
 		t.Errorf("failed to parse NavItems, got: %+v", Content.NavItems)
 	}
-
+	
 	if len(Content.WelcomeCards) != 1 || Content.WelcomeCards[0].Action != "updates" {
 		t.Errorf("failed to parse WelcomeCards, got: %+v", Content.WelcomeCards)
 	}
