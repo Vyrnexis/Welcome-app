@@ -26,7 +26,7 @@ func TestUISelectPage(t *testing.T) {
 		content:    container.NewStack(),
 		navButtons: make(map[string]*widget.Button),
 	}
-	
+
 	// Better to just build the layout
 	_ = ui.buildLayout()
 

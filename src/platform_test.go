@@ -31,7 +31,7 @@ func TestDetectDesktop(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			os.Setenv("XDG_CURRENT_DESKTOP", tt.xdgDesktop)
 			os.Setenv("DESKTOP_SESSION", tt.session)
-			
+
 			info := detectDesktop()
 			if info.Key != tt.expectedKey {
 				t.Errorf("expected %s, got %s", tt.expectedKey, info.Key)

@@ -13,16 +13,19 @@ type minSizeObject struct {
 	size    fyne.Size
 }
 
+// minSize wraps a canvas object to enforce a minimum width and height without altering its inherent layout properties.
 func minSize(content fyne.CanvasObject, size fyne.Size) fyne.CanvasObject {
 	object := &minSizeObject{content: content, size: size}
 	object.ExtendBaseWidget(object)
 	return object
 }
 
+// CreateRenderer creates and returns a standard Fyne widget renderer for the custom minSize layout container.
 func (object *minSizeObject) CreateRenderer() fyne.WidgetRenderer {
 	return widget.NewSimpleRenderer(object.content)
 }
 
+// MinSize calculates the minimum necessary dimensions by combining the content's minimum size and the forced size.
 func (object *minSizeObject) MinSize() fyne.Size {
 	return object.content.MinSize().Max(object.size)
 }
@@ -32,10 +35,12 @@ type responsiveGridLayout struct {
 	maxColumns   int
 }
 
+// responsiveGrid creates a dynamic grid layout that automatically adjusts column counts based on available screen width.
 func responsiveGrid(minCellWidth float32, maxColumns int, objects ...fyne.CanvasObject) fyne.CanvasObject {
 	return container.New(&responsiveGridLayout{minCellWidth: minCellWidth, maxColumns: maxColumns}, objects...)
 }
 
+// Layout arranges the child objects in a grid, dynamically wrapping to new rows based on the calculated column count.
 func (grid *responsiveGridLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 	visible := visibleObjects(objects)
 	columns := grid.columnsFor(size.Width, len(visible))
@@ -56,6 +61,7 @@ func (grid *responsiveGridLayout) Layout(objects []fyne.CanvasObject, size fyne.
 	}
 }
 
+// MinSize computes the absolute minimum dimensions required to display the grid with the minimal allowed column count.
 func (grid *responsiveGridLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
 	visible := visibleObjects(objects)
 	if len(visible) == 0 {
@@ -79,6 +85,7 @@ func (grid *responsiveGridLayout) MinSize(objects []fyne.CanvasObject) fyne.Size
 	)
 }
 
+// columnsFor calculates the optimal number of columns that can fit into the given width without shrinking below the minimum.
 func (grid *responsiveGridLayout) columnsFor(width float32, itemCount int) int {
 	if itemCount == 0 {
 		return 0
@@ -95,10 +102,12 @@ type maxWidthLayout struct {
 	width float32
 }
 
+// maxWidth centers a canvas object and restricts it from growing beyond a specified maximum horizontal width.
 func maxWidth(content fyne.CanvasObject, width float32) fyne.CanvasObject {
 	return container.New(&maxWidthLayout{width: width}, content)
 }
 
+// Layout centers the child objects horizontally if the container exceeds the constrained maximum width.
 func (layout *maxWidthLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 	for _, object := range objects {
 		if !object.Visible() {
@@ -111,6 +120,7 @@ func (layout *maxWidthLayout) Layout(objects []fyne.CanvasObject, size fyne.Size
 	}
 }
 
+// MinSize aggregates and returns the largest minimum size requirements from all visible child objects.
 func (layout *maxWidthLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
 	minSize := fyne.NewSize(0, 0)
 	for _, object := range objects {
@@ -121,6 +131,7 @@ func (layout *maxWidthLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
 	return minSize
 }
 
+// visibleObjects filters a given slice of Fyne canvas objects, returning only those currently marked as visible.
 func visibleObjects(objects []fyne.CanvasObject) []fyne.CanvasObject {
 	visible := make([]fyne.CanvasObject, 0, len(objects))
 	for _, object := range objects {

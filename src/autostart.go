@@ -9,6 +9,7 @@ import (
 
 const autostartFileName = "solus-welcome.desktop"
 
+// autostartPath determines the absolute file path for the user's desktop autostart entry.
 func autostartPath() string {
 	configHome := os.Getenv("XDG_CONFIG_HOME")
 	if configHome == "" {
@@ -21,6 +22,7 @@ func autostartPath() string {
 	return filepath.Join(configHome, "autostart", autostartFileName)
 }
 
+// isAutostartEnabled checks if the welcome application is configured to launch automatically on login.
 func isAutostartEnabled() bool {
 	path := autostartPath()
 	if path == "" {
@@ -30,6 +32,7 @@ func isAutostartEnabled() bool {
 	return err == nil && !info.IsDir()
 }
 
+// setAutostartEnabled enables or disables the application autostart behavior by managing its .desktop file.
 func setAutostartEnabled(enabled bool, baseDir string) error {
 	path := autostartPath()
 	if path == "" {
@@ -49,6 +52,7 @@ func setAutostartEnabled(enabled bool, baseDir string) error {
 	return os.WriteFile(path, []byte(desktopFileContent(baseDir)), 0o644)
 }
 
+// desktopFileContent generates the raw textual content for the autostart .desktop shortcut.
 func desktopFileContent(baseDir string) string {
 	return strings.Join([]string{
 		"[Desktop Entry]",
@@ -63,6 +67,7 @@ func desktopFileContent(baseDir string) string {
 	}, "\n")
 }
 
+// autostartExec determines the correct absolute path to the executable to use inside the autostart entry.
 func autostartExec(baseDir string) string {
 	installedLauncher := "/usr/bin/solus-welcome"
 	if _, err := os.Stat(installedLauncher); err == nil {
@@ -77,6 +82,7 @@ func autostartExec(baseDir string) string {
 	return quoteDesktopArg(filepath.Join(baseDir, "solus-welcome"))
 }
 
+// autostartIcon resolves the absolute path to the application logo for the desktop shortcut.
 func autostartIcon(baseDir string) string {
 	installedIcon := "/usr/share/solus-welcome/assets/logo.svg"
 	if _, err := os.Stat(installedIcon); err == nil {
@@ -85,6 +91,7 @@ func autostartIcon(baseDir string) string {
 	return filepath.Join(baseDir, "assets", "logo.svg")
 }
 
+// quoteDesktopArg properly escapes and quotes an executable argument for compliance with the desktop entry specification.
 func quoteDesktopArg(value string) string {
 	if !strings.ContainsAny(value, " \t\n\"\\$`") {
 		return value

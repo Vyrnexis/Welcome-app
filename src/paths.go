@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 )
 
+// findBaseDir locates the application's root directory by searching common execution paths for the assets folder.
 func findBaseDir() string {
 	candidates := make([]string, 0, 4)
 
@@ -27,6 +28,7 @@ func findBaseDir() string {
 	return "."
 }
 
+// fileExists returns a boolean indicating whether a valid regular file exists at the provided path.
 func fileExists(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && !info.IsDir()

@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+// navIcon returns the appropriate Fyne theme icon for a given sidebar navigation item key.
 func navIcon(key string) fyne.Resource {
 	switch key {
 	case "welcome":
@@ -25,6 +26,7 @@ func navIcon(key string) fyne.Resource {
 	}
 }
 
+// welcomeCardIcon maps a string action identifier to the corresponding Fyne theme icon resource.
 func welcomeCardIcon(action string) fyne.Resource {
 	switch action {
 	case "updates":
@@ -44,6 +46,7 @@ func welcomeCardIcon(action string) fyne.Resource {
 	}
 }
 
+// desktopIcon produces a canvas image object for the current desktop environment's logo, or a fallback icon.
 func desktopIcon(baseDir string, desktop DesktopInfo) fyne.CanvasObject {
 	if path := desktopIconPath(baseDir, desktop.Key); path != "" {
 		icon := canvas.NewImageFromFile(path)
@@ -56,6 +59,7 @@ func desktopIcon(baseDir string, desktop DesktopInfo) fyne.CanvasObject {
 	return minSize(container.NewCenter(icon), fyne.NewSize(54, 54))
 }
 
+// desktopFallbackIcon provides a generic Fyne resource icon when a specific desktop logo SVG cannot be found.
 func desktopFallbackIcon(key string) fyne.Resource {
 	switch key {
 	case "kde", "gnome", "xfce", "budgie":
@@ -65,6 +69,7 @@ func desktopFallbackIcon(key string) fyne.Resource {
 	}
 }
 
+// desktopIconPath searches multiple standard system locations for a specific desktop environment's icon file.
 func desktopIconPath(baseDir, key string) string {
 	for _, path := range desktopIconCandidates(baseDir, key) {
 		if fileExists(path) {
@@ -74,6 +79,7 @@ func desktopIconPath(baseDir, key string) string {
 	return ""
 }
 
+// desktopIconCandidates returns a list of absolute file paths to check for a desktop environment's logo.
 func desktopIconCandidates(baseDir, key string) []string {
 	localIcon := filepath.Join(baseDir, "assets", key+".svg")
 	switch key {

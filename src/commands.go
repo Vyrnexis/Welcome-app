@@ -13,6 +13,7 @@ import (
 
 const offlineMessage = "No internet connection was detected."
 
+// openURL parses a raw URL string and opens it in the user's default web browser.
 func openURL(app fyne.App, rawURL string) error {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
@@ -21,6 +22,7 @@ func openURL(app fyne.App, rawURL string) error {
 	return app.OpenURL(parsed)
 }
 
+// launchCommand starts an external executable asynchronously using the specified arguments.
 func launchCommand(command []string) error {
 	if len(command) == 0 {
 		return errors.New("no command provided")
@@ -31,6 +33,7 @@ func launchCommand(command []string) error {
 	return exec.Command(command[0], command[1:]...).Start()
 }
 
+// launchTerminalCommand runs a shell command inside a terminal emulator, optionally checking for internet.
 func launchTerminalCommand(title, shellCommand string, requireInternet bool) error {
 	if requireInternet && !hasInternetConnection() {
 		return errors.New(offlineMessage)
@@ -43,6 +46,7 @@ func launchTerminalCommand(title, shellCommand string, requireInternet bool) err
 	return launchCommand(command)
 }
 
+// terminalCommand wraps a shell command with the necessary arguments to execute inside a detected terminal emulator.
 func terminalCommand(title, shellCommand string) []string {
 	holdCommand := shellCommand + "; echo; read -rp 'Press Enter to close...'"
 	for _, launcher := range terminalLaunchers {
@@ -83,15 +87,18 @@ var terminalLaunchers = []terminalLauncher{
 	}},
 }
 
+// executableExists checks if a specific command-line utility is available in the system's PATH.
 func executableExists(name string) bool {
 	_, err := exec.LookPath(name)
 	return err == nil
 }
 
+// shellQuote escapes a string so it can be safely passed as a single argument in a shell command.
 func shellQuote(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }
 
+// hasInternetConnection verifies internet connectivity by attempting a quick TCP connection to a public DNS server.
 func hasInternetConnection() bool {
 	conn, err := net.DialTimeout("tcp", "1.1.1.1:53", 2*time.Second)
 	if err != nil {
@@ -101,6 +108,7 @@ func hasInternetConnection() bool {
 	return true
 }
 
+// countAvailableUpdates queries the eopkg package manager to determine the number of available system updates.
 func countAvailableUpdates() (int, error) {
 	if !hasInternetConnection() {
 		return 0, errors.New(offlineMessage)

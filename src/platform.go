@@ -11,6 +11,7 @@ type DesktopInfo struct {
 	Name string
 }
 
+// detectDesktop identifies the current desktop environment using standard Linux environment variables.
 func detectDesktop() DesktopInfo {
 	values := []string{
 		os.Getenv("XDG_CURRENT_DESKTOP"),
@@ -35,6 +36,7 @@ func detectDesktop() DesktopInfo {
 	return DesktopInfo{Key: "unknown", Name: "Unknown desktop"}
 }
 
+// architectureLabel returns a human-readable string representation of the current system architecture.
 func architectureLabel() string {
 	switch runtime.GOARCH {
 	case "amd64", "arm64":

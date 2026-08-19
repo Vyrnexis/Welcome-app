@@ -25,6 +25,7 @@ type welcomeUI struct {
 	currentPage  string
 }
 
+// main initializes the application, sets the theme, and launches the main window.
 func main() {
 	a := app.NewWithID("us.getsol.SolusWelcome")
 	a.Settings().SetTheme(newSolusTheme(false))
@@ -51,12 +52,14 @@ func main() {
 	w.ShowAndRun()
 }
 
+// buildLayout constructs the primary application layout combining the sidebar and main content area.
 func (ui *welcomeUI) buildLayout() fyne.CanvasObject {
 	sidebar := ui.buildSidebar()
 	main := container.NewBorder(nil, ui.footer(), nil, nil, ui.content)
 	return container.NewBorder(nil, nil, sidebar, nil, main)
 }
 
+// buildSidebar generates the navigation sidebar containing the logo, title, and page buttons.
 func (ui *welcomeUI) buildSidebar() fyne.CanvasObject {
 	logo := canvas.NewImageFromFile(filepath.Join(ui.baseDir, "assets", "logo.svg"))
 	logo.SetMinSize(fyne.NewSize(88, 88))
@@ -89,6 +92,7 @@ func (ui *welcomeUI) buildSidebar() fyne.CanvasObject {
 	return container.NewPadded(minSize(container.NewVBox(items...), fyne.NewSize(270, 0)))
 }
 
+// footer creates the bottom controls section containing the autostart and theme toggles.
 func (ui *welcomeUI) footer() fyne.CanvasObject {
 	var startup *widget.Check
 	startup = widget.NewCheck("Show this welcome screen on startup", func(enabled bool) {
@@ -109,6 +113,7 @@ func (ui *welcomeUI) footer() fyne.CanvasObject {
 	return container.NewPadded(container.NewBorder(nil, nil, footerControls, closeButton))
 }
 
+// selectPage switches the main content area to the specified page and updates button states.
 func (ui *welcomeUI) selectPage(page string) {
 	ui.currentPage = page
 	for key, button := range ui.navButtons {
@@ -124,6 +129,7 @@ func (ui *welcomeUI) selectPage(page string) {
 	ui.content.Refresh()
 }
 
+// refreshPage reloads the currently active page to reflect state or theme changes.
 func (ui *welcomeUI) refreshPage() {
 	page := ui.currentPage
 	if page == "" {
@@ -133,6 +139,7 @@ func (ui *welcomeUI) refreshPage() {
 	ui.content.Refresh()
 }
 
+// page maps a string identifier to the corresponding page layout object.
 func (ui *welcomeUI) page(page string) fyne.CanvasObject {
 	switch page {
 	case "customise":
@@ -146,6 +153,7 @@ func (ui *welcomeUI) page(page string) fyne.CanvasObject {
 	}
 }
 
+// welcomePage builds the main hero page displaying system information and quick action cards.
 func (ui *welcomeUI) welcomePage() fyne.CanvasObject {
 	title := headingText("Welcome to Solus", 40)
 	subtitle := widget.NewLabel("Thank you for choosing Solus. This welcome app will help you get set up, learn about your system, and find useful resources.")
@@ -171,6 +179,7 @@ func (ui *welcomeUI) welcomePage() fyne.CanvasObject {
 	return container.NewPadded(container.NewVScroll(maxWidth(page, 1180)))
 }
 
+// systemCard generates a detailed card displaying the current desktop edition and architecture.
 func (ui *welcomeUI) systemCard() fyne.CanvasObject {
 	desktopIcon := desktopIcon(ui.baseDir, ui.desktop)
 
@@ -189,6 +198,7 @@ func (ui *welcomeUI) systemCard() fyne.CanvasObject {
 	return widget.NewCard("", "", container.NewHBox(desktopIcon, details))
 }
 
+// welcomeCard builds a standard action card for the welcome screen grid.
 func (ui *welcomeUI) welcomeCard(card WelcomeCard) fyne.CanvasObject {
 	icon := widget.NewIcon(welcomeCardIcon(card.Action))
 	title := headingText(card.Title, 18)
@@ -209,6 +219,7 @@ func (ui *welcomeUI) welcomeCard(card WelcomeCard) fyne.CanvasObject {
 	))
 }
 
+// customisePage constructs a grid of desktop-specific customization shortcuts.
 func (ui *welcomeUI) customisePage() fyne.CanvasObject {
 	actions, ok := Content.DesktopActions[ui.desktop.Key]
 	if !ok {
@@ -234,6 +245,7 @@ func (ui *welcomeUI) customisePage() fyne.CanvasObject {
 	return ui.cardPage("Customise", "Desktop-specific settings and appearance actions based on the current session.", cards)
 }
 
+// linkPage creates a generic page layout displaying a grid of external URL link cards.
 func (ui *welcomeUI) linkPage(title, subtitle string, links []LinkCard, buttonText string) fyne.CanvasObject {
 	cards := make([]fyne.CanvasObject, 0, len(links))
 	for _, link := range links {
@@ -247,6 +259,7 @@ func (ui *welcomeUI) linkPage(title, subtitle string, links []LinkCard, buttonTe
 	return ui.cardPage(title, subtitle, cards)
 }
 
+// cardPage wraps a generic grid of cards with a common title and subtitle header.
 func (ui *welcomeUI) cardPage(title, subtitle string, cards []fyne.CanvasObject) fyne.CanvasObject {
 	pageTitle := headingText(title, 34)
 	pageSubtitle := widget.NewLabel(subtitle)
@@ -258,6 +271,7 @@ func (ui *welcomeUI) cardPage(title, subtitle string, cards []fyne.CanvasObject)
 	return container.NewPadded(container.NewVScroll(maxWidth(page, 1180)))
 }
 
+// standardCard produces a uniform card layout with a title, body text, and an action button.
 func (ui *welcomeUI) standardCard(title, body, buttonText string, callback func()) fyne.CanvasObject {
 	titleLabel := headingText(title, 18)
 	bodyLabel := widget.NewLabel(body)
@@ -267,6 +281,7 @@ func (ui *welcomeUI) standardCard(title, body, buttonText string, callback func(
 	return widget.NewCard("", "", container.NewVBox(titleLabel, widget.NewSeparator(), bodyLabel, layout.NewSpacer(), button))
 }
 
+// openWelcomeAction executes the designated system action based on the provided action identifier string.
 func (ui *welcomeUI) openWelcomeAction(action string) {
 	switch action {
 	case "updates":
@@ -290,6 +305,7 @@ func (ui *welcomeUI) openWelcomeAction(action string) {
 	}
 }
 
+// openDesktopCommand executes a shell command from the dictionary mapped to the current desktop environment.
 func (ui *welcomeUI) openDesktopCommand(title string, commands map[string]CommandInfo, fallback CommandInfo) {
 	command, ok := commands[ui.desktop.Key]
 	if !ok {
@@ -301,6 +317,7 @@ func (ui *welcomeUI) openDesktopCommand(title string, commands map[string]Comman
 	}
 }
 
+// checkUpdates triggers an asynchronous check for system package updates and updates the UI button.
 func (ui *welcomeUI) checkUpdates(showErrors bool) {
 	if ui.updateButton == nil {
 		return
@@ -317,6 +334,7 @@ func (ui *welcomeUI) checkUpdates(showErrors bool) {
 	}()
 }
 
+// finishUpdateCheck updates the update button text based on the result of the package check.
 func (ui *welcomeUI) finishUpdateCheck(count int, err error, showErrors bool) {
 	if err != nil {
 		ui.updateButton.SetText("Unable to check updates")
@@ -338,6 +356,7 @@ func (ui *welcomeUI) finishUpdateCheck(count int, err error, showErrors bool) {
 	ui.updateButton.Enable()
 }
 
+// headingText creates a styled canvas text object formatted for large header titles.
 func headingText(text string, size float32) *canvas.Text {
 	heading := canvas.NewText(text, theme.Color(theme.ColorNameForeground))
 	heading.TextStyle = fyne.TextStyle{Bold: true}
