@@ -1,8 +1,10 @@
 # Solus Welcome App
 
+[![Build & Test](https://github.com/Vyrnexis/welcome-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Vyrnexis/welcome-app/actions)
+
 A lightweight Go-based welcome application for SolusOS.
 
-This application provides users with a SolusOS welcome app and is built using the [Fyne](https://fyne.io/) GUI toolkit for Go, it is both fast and cross-platform compatible.
+This application provides users with a SolusOS welcome app and is built using the [Fyne](https://fyne.io/) GUI toolkit for Go, ensuring it is both exceptionally fast and seamlessly integrated.
 
 <p align="center">
   <img src="assets/Screenshot.png" alt="Solus Welcome App Screenshot" width="800">
@@ -14,10 +16,12 @@ This application provides users with a SolusOS welcome app and is built using th
 - **System Updates**: Checks for available packages and lets you upgrade your system with a single click.
 - **Quick Launcher**: Easy access to open your software center, system settings, or Solus documentation.
 - **User Preferences**: Includes a built-in dark mode toggle and options to manage autostart behavior on boot.
+- **Highly Configurable**: Every UI string, URL, and system command is dynamically loaded from a clean `config.toml` file, making it incredibly easy to tweak without recompiling.
+- **Full i18n Support**: Automatically detects your system language and loads community-provided translations seamlessly.
 
 ## Installation
 
-Pre-compiled binaries can be found in the `bin/` directory of this repository for testing purposes.
+Pre-compiled, highly optimized binaries can be found in the `bin/` directory of this repository.
 
 You can easily install the application using the provided install script:
 
@@ -25,22 +29,19 @@ You can easily install the application using the provided install script:
 ./install.sh
 ```
 
-Running the script, you will be presented with a menu:
+Running the script presents a quick interactive menu:
 1. **Install from pre-compiled binary**: Installs the existing binary directly without needing the Go toolchain.
 2. **Compile from source and install**: Automatically builds a stripped, optimized Go binary and installs it.
 
-Both methods will install the app and its associated assets (desktop entries, SVGs) into your system directories (`/usr/bin` and `/usr/share`).
+Both methods will safely install the app and its associated assets (desktop entries, SVGs, and translations) into your system directories (`/usr/bin` and `/usr/share`).
 
-## Development & Build Dependencies
+## Configuration
 
-If you are modifying or compiling this application from source on SolusOS, you will need the Go toolchain and a few C-level X11/Wayland development headers required by Fyne.
+If you wish to change the default links, modify the text, or adjust what terminal commands the buttons execute, simply edit the `assets/config.toml` file. The application parses this configuration at runtime!
 
-You can easily install all required dependencies on Solus via `eopkg`:
+## Contributing & Translations
 
-```bash
-sudo eopkg install -c system.devel golang mesalib-devel libxrandr-devel libxcursor-devel libxi-devel libxinerama-devel wayland-devel libxkbcommon-devel libxxf86vm-devel
-```
+We welcome all community contributions, whether it's fixing a bug, adding a feature, or translating the application into your native language!
 
-## Binary Size Optimization
-
-The `install.sh` script is already configured to build the app with `-ldflags="-s -w"` to strip DWARF debugging information. If you want to compress the binary even further, you can install UPX (`sudo eopkg install upx`) and run `upx --best bin/solus-welcome`.
+- **Developers:** Please read our **[Contributing Guide](CONTRIBUTING.md)** for instructions on installing build dependencies (like Wayland/X11 headers), running the test suite, and our code formatting conventions.
+- **Translators:** No programming experience is required to translate this app! Check out the **[Locales Guide](assets/locales/README.md)** to see how you can add your language in just a few minutes.
