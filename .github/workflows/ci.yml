@@ -39,7 +39,7 @@ jobs:
       run: go test -v ./...
 
     - name: Build Application
-      run: go build -ldflags="-s -w" -o bin/solus-welcome ./src
+      run: go build -tags wayland -ldflags="-s -w" -o bin/solus-welcome ./src
       
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
