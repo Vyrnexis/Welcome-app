@@ -24,7 +24,7 @@ Label = "Test Label"
 Title = "Test Card"
 Action = "updates"
 `)
-	
+
 	configPath := filepath.Join(assetsDir, "config.toml")
 	if err := os.WriteFile(configPath, dummyConfig, 0644); err != nil {
 		t.Fatalf("failed to write dummy config: %v", err)
@@ -39,7 +39,7 @@ Action = "updates"
 	if len(Content.NavItems) != 1 || Content.NavItems[0].Key != "test" {
 		t.Errorf("failed to parse NavItems, got: %+v", Content.NavItems)
 	}
-	
+
 	if len(Content.WelcomeCards) != 1 || Content.WelcomeCards[0].Action != "updates" {
 		t.Errorf("failed to parse WelcomeCards, got: %+v", Content.WelcomeCards)
 	}
