@@ -21,7 +21,7 @@ case $choice in
   2)
     echo "Compiling from source..."
     mkdir -p "$BIN_DIR"
-    go build -ldflags="-s -w" -o "$APP_BIN" ./src
+    go build -tags wayland -ldflags="-s -w" -o "$APP_BIN" ./src
     ;;
   *)
     echo "Invalid choice. Exiting."
