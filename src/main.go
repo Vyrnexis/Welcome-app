@@ -66,7 +66,7 @@ func (ui *welcomeUI) buildSidebar() fyne.CanvasObject {
 	logo.FillMode = canvas.ImageFillContain
 
 	title := headingText("Solus", 30)
-	tagline := widget.NewLabel("The personal OS for personal computers")
+	tagline := widget.NewLabel(Content.UI.Tagline)
 	tagline.Wrapping = fyne.TextWrapWord
 	tagline.Alignment = fyne.TextAlignCenter
 	tagline.TextStyle = fyne.TextStyle{Italic: true}
@@ -95,7 +95,7 @@ func (ui *welcomeUI) buildSidebar() fyne.CanvasObject {
 // footer creates the bottom controls section containing the autostart and theme toggles.
 func (ui *welcomeUI) footer() fyne.CanvasObject {
 	var startup *widget.Check
-	startup = widget.NewCheck("Show this welcome screen on startup", func(enabled bool) {
+	startup = widget.NewCheck(Content.UI.ShowOnStartup, func(enabled bool) {
 		if err := setAutostartEnabled(enabled, ui.baseDir); err != nil {
 			dialog.ShowError(err, ui.window)
 			startup.SetChecked(isAutostartEnabled())
@@ -103,8 +103,8 @@ func (ui *welcomeUI) footer() fyne.CanvasObject {
 	})
 	startup.SetChecked(isAutostartEnabled())
 
-	closeButton := widget.NewButton("Close", ui.window.Close)
-	themeToggle := widget.NewCheck("Dark theme", func(enabled bool) {
+	closeButton := widget.NewButton(Content.UI.Close, ui.window.Close)
+	themeToggle := widget.NewCheck(Content.UI.DarkTheme, func(enabled bool) {
 		ui.app.Settings().SetTheme(newSolusTheme(enabled))
 		ui.refreshPage()
 	})
@@ -145,9 +145,9 @@ func (ui *welcomeUI) page(page string) fyne.CanvasObject {
 	case "customise":
 		return ui.customisePage()
 	case "support":
-		return ui.linkPage("Support", "Find official help, community discussion, and issue tracking.", Content.SupportLinks, "Open")
+		return ui.linkPage(Content.NavItems[2].Label, "", Content.SupportLinks, Content.UI.OpenButton)
 	case "contribute":
-		return ui.linkPage("Contribute", "Solus is built by people who test, document, package, develop, and support the project.", Content.ContributeLinks, "Learn more")
+		return ui.linkPage(Content.NavItems[3].Label, "", Content.ContributeLinks, Content.UI.LearnMoreButton)
 	default:
 		return ui.welcomePage()
 	}
@@ -155,8 +155,8 @@ func (ui *welcomeUI) page(page string) fyne.CanvasObject {
 
 // welcomePage builds the main hero page displaying system information and quick action cards.
 func (ui *welcomeUI) welcomePage() fyne.CanvasObject {
-	title := headingText("Welcome to Solus", 40)
-	subtitle := widget.NewLabel("Thank you for choosing Solus. This welcome app will help you get set up, learn about your system, and find useful resources.")
+	title := headingText(Content.UI.WelcomeTitle, 40)
+	subtitle := widget.NewLabel(Content.UI.WelcomeSubtitle)
 	subtitle.Wrapping = fyne.TextWrapWord
 	subtitle.TextStyle = fyne.TextStyle{Italic: true}
 
@@ -169,7 +169,7 @@ func (ui *welcomeUI) welcomePage() fyne.CanvasObject {
 		cards = append(cards, ui.welcomeCard(card))
 	}
 
-	sectionTitle := headingText("Getting started", 24)
+	sectionTitle := headingText(Content.UI.GettingStarted, 24)
 	page := container.NewVBox(
 		hero,
 		widget.NewSeparator(),
@@ -183,12 +183,12 @@ func (ui *welcomeUI) welcomePage() fyne.CanvasObject {
 func (ui *welcomeUI) systemCard() fyne.CanvasObject {
 	desktopIcon := desktopIcon(ui.baseDir, ui.desktop)
 
-	name := headingText("Solus Linux", 22)
-	edition := widget.NewLabel(ui.desktop.Name + " Edition")
+	name := headingText(Content.UI.SolusLinux, 22)
+	edition := widget.NewLabel(ui.desktop.Name + Content.UI.EditionSuffix)
 	edition.TextStyle = fyne.TextStyle{Bold: true}
 	arch := widget.NewLabel(architectureLabel())
 
-	ui.updateButton = widget.NewButton("Check for updates", func() {
+	ui.updateButton = widget.NewButton(Content.UI.CheckForUpdates, func() {
 		ui.checkUpdates(true)
 	})
 	ui.updateButton.Importance = widget.HighImportance
@@ -224,25 +224,25 @@ func (ui *welcomeUI) customisePage() fyne.CanvasObject {
 	actions, ok := Content.DesktopActions[ui.desktop.Key]
 	if !ok {
 		actions = []DesktopAction{
-			{Title: "Open Settings", Body: "Desktop-specific settings were not detected."},
+			{Title: Content.UI.OpenButton, Body: Content.UI.NoDesktopSettings},
 		}
 	}
 
 	cards := make([]fyne.CanvasObject, 0, len(actions))
 	for _, action := range actions {
 		action := action
-		cards = append(cards, ui.standardCard(action.Title, action.Body, "Open", func() {
+		cards = append(cards, ui.standardCard(action.Title, action.Body, Content.UI.OpenButton, func() {
 			if len(action.Command) == 0 {
-				dialog.ShowInformation(action.Title, "Desktop-specific settings were not detected.", ui.window)
+				dialog.ShowInformation(action.Title, Content.UI.NoDesktopSettings, ui.window)
 				return
 			}
 			if err := launchCommand(action.Command); err != nil {
-				dialog.ShowInformation(action.Title, fmt.Sprintf("%s is not installed on this system.", action.Command[0]), ui.window)
+				dialog.ShowInformation(action.Title, fmt.Sprintf(Content.UI.NotInstalled, action.Command[0]), ui.window)
 			}
 		}))
 	}
 
-	return ui.cardPage("Customise", "Desktop-specific settings and appearance actions based on the current session.", cards)
+	return ui.cardPage(Content.NavItems[1].Label, "", cards)
 }
 
 // linkPage creates a generic page layout displaying a grid of external URL link cards.
@@ -285,19 +285,19 @@ func (ui *welcomeUI) standardCard(title, body, buttonText string, callback func(
 func (ui *welcomeUI) openWelcomeAction(action string) {
 	switch action {
 	case "updates":
-		if err := launchTerminalCommand("Update your system", "sudo eopkg upgrade", true); err != nil {
-			dialog.ShowInformation("Update your system", err.Error(), ui.window)
+		if err := launchTerminalCommand(Content.WelcomeCards[0].Title, "sudo eopkg upgrade", true); err != nil {
+			dialog.ShowInformation(Content.WelcomeCards[0].Title, err.Error(), ui.window)
 		}
 	case "software":
-		ui.openDesktopCommand("Install common apps", Content.SoftwareCommands, CommandInfo{[]string{"plasma-discover"}, "No supported software centre was found."})
+		ui.openDesktopCommand(Content.WelcomeCards[1].Title, Content.SoftwareCommands, CommandInfo{[]string{"plasma-discover"}, "No supported software centre was found."})
 	case "customise":
-		ui.openDesktopCommand("Customise your desktop", Content.CustomiseCommands, CommandInfo{[]string{"budgie-desktop-settings"}, "No supported desktop settings application was found."})
+		ui.openDesktopCommand(Content.WelcomeCards[2].Title, Content.CustomiseCommands, CommandInfo{[]string{"budgie-desktop-settings"}, "No supported desktop settings application was found."})
 	case "learn":
 		if err := openURL(ui.app, "https://help.getsol.us/docs/user/intro"); err != nil {
 			dialog.ShowError(err, ui.window)
 		}
 	case "settings":
-		ui.openDesktopCommand("System Settings", Content.SystemSettingsCommands, CommandInfo{[]string{"budgie-control-center"}, "No supported settings tool was found."})
+		ui.openDesktopCommand(Content.WelcomeCards[4].Title, Content.SystemSettingsCommands, CommandInfo{[]string{"budgie-control-center"}, "No supported settings tool was found."})
 	case "donate":
 		if err := openURL(ui.app, "https://opencollective.com/getsolus"); err != nil {
 			dialog.ShowError(err, ui.window)
@@ -323,7 +323,7 @@ func (ui *welcomeUI) checkUpdates(showErrors bool) {
 		return
 	}
 
-	ui.updateButton.SetText("Checking updates...")
+	ui.updateButton.SetText(Content.UI.CheckingUpdates)
 	ui.updateButton.Disable()
 
 	go func() {
@@ -337,9 +337,9 @@ func (ui *welcomeUI) checkUpdates(showErrors bool) {
 // finishUpdateCheck updates the update button text based on the result of the package check.
 func (ui *welcomeUI) finishUpdateCheck(count int, err error, showErrors bool) {
 	if err != nil {
-		ui.updateButton.SetText("Unable to check updates")
+		ui.updateButton.SetText(Content.UI.UnableToCheckUpdates)
 		if showErrors {
-			dialog.ShowInformation("Check for updates", err.Error(), ui.window)
+			dialog.ShowInformation(Content.UI.CheckForUpdates, err.Error(), ui.window)
 		}
 		ui.updateButton.Enable()
 		return
@@ -347,11 +347,11 @@ func (ui *welcomeUI) finishUpdateCheck(count int, err error, showErrors bool) {
 
 	switch count {
 	case 0:
-		ui.updateButton.SetText("System is up to date")
+		ui.updateButton.SetText(Content.UI.SystemUpToDate)
 	case 1:
-		ui.updateButton.SetText("1 update available")
+		ui.updateButton.SetText(Content.UI.OneUpdateAvailable)
 	default:
-		ui.updateButton.SetText(fmt.Sprintf("%d updates available", count))
+		ui.updateButton.SetText(fmt.Sprintf(Content.UI.UpdatesAvailable, count))
 	}
 	ui.updateButton.Enable()
 }
