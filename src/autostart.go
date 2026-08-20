@@ -40,8 +40,8 @@ func setAutostartEnabled(enabled bool, baseDir string) error {
 	}
 
 	if !enabled {
-		if _, err := os.Stat(path); err == nil {
-			return os.Remove(path)
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return err
 		}
 		return nil
 	}
@@ -74,8 +74,12 @@ func autostartExec(baseDir string) string {
 		return installedLauncher
 	}
 
+	if exe, err := os.Executable(); err == nil && fileExists(exe) {
+		return quoteDesktopArg(exe)
+	}
+
 	localBinary := filepath.Join(baseDir, "bin", "solus-welcome")
-	if _, err := os.Stat(localBinary); err == nil {
+	if fileExists(localBinary) {
 		return quoteDesktopArg(localBinary)
 	}
 
