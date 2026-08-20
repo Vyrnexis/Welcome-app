@@ -93,15 +93,22 @@ func (c *AppContent) WelcomeCardTitle(action, fallback string) string {
 
 var Content AppContent
 
-// getSystemLanguage detects the system locale and returns the base language code.
-func getSystemLanguage() string {
+// getSystemLocales detects the system locale and returns ordered candidate language codes.
+func getSystemLocales() []string {
 	lang := os.Getenv("LANG")
-	if lang == "" || lang == "C" {
-		return "en"
+	if lang == "" || lang == "C" || lang == "POSIX" {
+		return []string{"en"}
 	}
-	lang = strings.Split(lang, ".")[0] // Strip encoding (e.g. .UTF-8)
-	lang = strings.Split(lang, "_")[0] // Strip region (e.g. fr_FR -> fr)
-	return lang
+	clean := strings.Split(lang, ".")[0]
+	clean = strings.Split(clean, "@")[0]
+	if clean == "" {
+		return []string{"en"}
+	}
+	base := strings.Split(clean, "_")[0]
+	if clean != base {
+		return []string{clean, base}
+	}
+	return []string{base}
 }
 
 // LoadContent reads the base TOML configuration and applies language-specific overrides if available.
@@ -111,12 +118,14 @@ func LoadContent(baseDir string) error {
 		return err
 	}
 
-	lang := getSystemLanguage()
-	if lang != "en" {
-		localizedPath := filepath.Join(baseDir, "assets", "locales", lang+".toml")
+	for _, loc := range getSystemLocales() {
+		if loc == "en" {
+			continue
+		}
+		localizedPath := filepath.Join(baseDir, "assets", "locales", loc+".toml")
 		if fileExists(localizedPath) {
-			// Decoding over the existing Content struct safely overwrites only the keys present in the translation file.
 			_, _ = toml.DecodeFile(localizedPath, &Content)
+			break
 		}
 	}
 	return nil

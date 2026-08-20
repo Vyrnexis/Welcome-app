@@ -58,3 +58,32 @@ Action = "updates"
 		t.Errorf("expected 'fallback', got '%s'", title)
 	}
 }
+
+// TestGetSystemLocales validates extraction of locale candidate tags from environment strings.
+func TestGetSystemLocales(t *testing.T) {
+	tests := []struct {
+		lang     string
+		expected []string
+	}{
+		{"", []string{"en"}},
+		{"C", []string{"en"}},
+		{"POSIX", []string{"en"}},
+		{"fr_FR.UTF-8", []string{"fr_FR", "fr"}},
+		{"pt_BR.UTF-8@euro", []string{"pt_BR", "pt"}},
+		{"de.UTF-8", []string{"de"}},
+	}
+
+	for _, tt := range tests {
+		t.Setenv("LANG", tt.lang)
+		result := getSystemLocales()
+		if len(result) != len(tt.expected) {
+			t.Errorf("getSystemLocales(%q) length = %d, expected %d", tt.lang, len(result), len(tt.expected))
+			continue
+		}
+		for i := range result {
+			if result[i] != tt.expected[i] {
+				t.Errorf("getSystemLocales(%q)[%d] = %q, expected %q", tt.lang, i, result[i], tt.expected[i])
+			}
+		}
+	}
+}
