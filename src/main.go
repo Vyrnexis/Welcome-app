@@ -15,14 +15,17 @@ import (
 )
 
 type welcomeUI struct {
-	app          fyne.App
-	window       fyne.Window
-	baseDir      string
-	desktop      DesktopInfo
-	content      *fyne.Container
-	updateButton *widget.Button
-	navButtons   map[string]*widget.Button
-	currentPage  string
+	app               fyne.App
+	window            fyne.Window
+	baseDir           string
+	desktop           DesktopInfo
+	content           *fyne.Container
+	updateButton      *widget.Button
+	navButtons        map[string]*widget.Button
+	currentPage       string
+	checkingUpdates   bool
+	cachedUpdateCount int
+	hasCheckedUpdates bool
 }
 
 // main initializes the application, sets the theme, and launches the main window.
@@ -189,11 +192,11 @@ func (ui *welcomeUI) systemCard() fyne.CanvasObject {
 	arch := widget.NewLabel(architectureLabel())
 
 	ui.updateButton = widget.NewButton(Content.UI.CheckForUpdates, func() {
-		ui.checkUpdates(true)
+		ui.checkUpdates(true, true)
 	})
 	ui.updateButton.Importance = widget.HighImportance
 
-	ui.checkUpdates(false)
+	ui.checkUpdates(false, false)
 	details := container.NewVBox(name, edition, arch, layout.NewSpacer(), ui.updateButton)
 	return widget.NewCard("", "", container.NewHBox(desktopIcon, details))
 }
@@ -322,11 +325,21 @@ func (ui *welcomeUI) openDesktopCommand(title string, commands map[string]Comman
 }
 
 // checkUpdates triggers an asynchronous check for system package updates and updates the UI button.
-func (ui *welcomeUI) checkUpdates(showErrors bool) {
+func (ui *welcomeUI) checkUpdates(force, showErrors bool) {
 	if ui.updateButton == nil {
 		return
 	}
 
+	if !force && ui.hasCheckedUpdates {
+		ui.setUpdateButtonState(ui.cachedUpdateCount)
+		return
+	}
+
+	if ui.checkingUpdates {
+		return
+	}
+
+	ui.checkingUpdates = true
 	ui.updateButton.SetText(Content.UI.CheckingUpdates)
 	ui.updateButton.Disable()
 
@@ -338,17 +351,11 @@ func (ui *welcomeUI) checkUpdates(showErrors bool) {
 	}()
 }
 
-// finishUpdateCheck updates the update button text based on the result of the package check.
-func (ui *welcomeUI) finishUpdateCheck(count int, err error, showErrors bool) {
-	if err != nil {
-		ui.updateButton.SetText(Content.UI.UnableToCheckUpdates)
-		if showErrors {
-			dialog.ShowInformation(Content.UI.CheckForUpdates, err.Error(), ui.window)
-		}
-		ui.updateButton.Enable()
+// setUpdateButtonState configures the button label according to the cached update count.
+func (ui *welcomeUI) setUpdateButtonState(count int) {
+	if ui.updateButton == nil {
 		return
 	}
-
 	switch count {
 	case 0:
 		ui.updateButton.SetText(Content.UI.SystemUpToDate)
@@ -358,6 +365,23 @@ func (ui *welcomeUI) finishUpdateCheck(count int, err error, showErrors bool) {
 		ui.updateButton.SetText(fmt.Sprintf(Content.UI.UpdatesAvailable, count))
 	}
 	ui.updateButton.Enable()
+}
+
+// finishUpdateCheck updates the update button text based on the result of the package check.
+func (ui *welcomeUI) finishUpdateCheck(count int, err error, showErrors bool) {
+	ui.checkingUpdates = false
+	if err != nil {
+		ui.updateButton.SetText(Content.UI.UnableToCheckUpdates)
+		if showErrors {
+			dialog.ShowInformation(Content.UI.CheckForUpdates, err.Error(), ui.window)
+		}
+		ui.updateButton.Enable()
+		return
+	}
+
+	ui.cachedUpdateCount = count
+	ui.hasCheckedUpdates = true
+	ui.setUpdateButtonState(count)
 }
 
 // headingText creates a styled canvas text object formatted for large header titles.
