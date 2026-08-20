@@ -30,7 +30,14 @@ func launchCommand(command []string) error {
 	if _, err := exec.LookPath(command[0]); err != nil {
 		return err
 	}
-	return exec.Command(command[0], command[1:]...).Start()
+	cmd := exec.Command(command[0], command[1:]...)
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go func() {
+		_ = cmd.Wait()
+	}()
+	return nil
 }
 
 // launchTerminalCommand runs a shell command inside a terminal emulator, optionally checking for internet.
