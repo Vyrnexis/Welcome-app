@@ -51,7 +51,21 @@ func (grid *responsiveGridLayout) Layout(objects []fyne.CanvasObject, size fyne.
 	padding := theme.Padding()
 	rows := (len(visible) + columns - 1) / columns
 	cellWidth := (size.Width - float32(columns-1)*padding) / float32(columns)
+	if cellWidth < 0 {
+		cellWidth = size.Width
+	}
+
+	maxMinHeight := float32(0)
+	for _, object := range visible {
+		if h := object.MinSize().Height; h > maxMinHeight {
+			maxMinHeight = h
+		}
+	}
+
 	cellHeight := (size.Height - float32(rows-1)*padding) / float32(rows)
+	if cellHeight < maxMinHeight {
+		cellHeight = maxMinHeight
+	}
 
 	for index, object := range visible {
 		row := index / columns
@@ -80,7 +94,7 @@ func (grid *responsiveGridLayout) MinSize(objects []fyne.CanvasObject) fyne.Size
 	rows := (len(visible) + columns - 1) / columns
 	padding := theme.Padding()
 	return fyne.NewSize(
-		float32(columns)*cell.Width+float32(columns-1)*padding,
+		cell.Width,
 		float32(rows)*cell.Height+float32(rows-1)*padding,
 	)
 }
