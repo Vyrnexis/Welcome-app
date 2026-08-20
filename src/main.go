@@ -145,9 +145,9 @@ func (ui *welcomeUI) page(page string) fyne.CanvasObject {
 	case "customise":
 		return ui.customisePage()
 	case "support":
-		return ui.linkPage(Content.NavItems[2].Label, "", Content.SupportLinks, Content.UI.OpenButton)
+		return ui.linkPage(Content.NavLabel("support", "Support"), "", Content.SupportLinks, Content.UI.OpenButton)
 	case "contribute":
-		return ui.linkPage(Content.NavItems[3].Label, "", Content.ContributeLinks, Content.UI.LearnMoreButton)
+		return ui.linkPage(Content.NavLabel("contribute", "Contribute"), "", Content.ContributeLinks, Content.UI.LearnMoreButton)
 	default:
 		return ui.welcomePage()
 	}
@@ -242,7 +242,7 @@ func (ui *welcomeUI) customisePage() fyne.CanvasObject {
 		}))
 	}
 
-	return ui.cardPage(Content.NavItems[1].Label, "", cards)
+	return ui.cardPage(Content.NavLabel("customise", "Customise"), "", cards)
 }
 
 // linkPage creates a generic page layout displaying a grid of external URL link cards.
@@ -285,19 +285,23 @@ func (ui *welcomeUI) standardCard(title, body, buttonText string, callback func(
 func (ui *welcomeUI) openWelcomeAction(action string) {
 	switch action {
 	case "updates":
-		if err := launchTerminalCommand(Content.WelcomeCards[0].Title, "sudo eopkg upgrade", true); err != nil {
-			dialog.ShowInformation(Content.WelcomeCards[0].Title, err.Error(), ui.window)
+		title := Content.WelcomeCardTitle("updates", "Update your system")
+		if err := launchTerminalCommand(title, "sudo eopkg upgrade", true); err != nil {
+			dialog.ShowInformation(title, err.Error(), ui.window)
 		}
 	case "software":
-		ui.openDesktopCommand(Content.WelcomeCards[1].Title, Content.SoftwareCommands, CommandInfo{[]string{"plasma-discover"}, "No supported software centre was found."})
+		title := Content.WelcomeCardTitle("software", "Install common apps")
+		ui.openDesktopCommand(title, Content.SoftwareCommands, CommandInfo{[]string{"plasma-discover"}, "No supported software centre was found."})
 	case "customise":
-		ui.openDesktopCommand(Content.WelcomeCards[2].Title, Content.CustomiseCommands, CommandInfo{[]string{"budgie-desktop-settings"}, "No supported desktop settings application was found."})
+		title := Content.WelcomeCardTitle("customise", "Customise your desktop")
+		ui.openDesktopCommand(title, Content.CustomiseCommands, CommandInfo{[]string{"budgie-desktop-settings"}, "No supported desktop settings application was found."})
 	case "learn":
 		if err := openURL(ui.app, "https://help.getsol.us/docs/user/intro"); err != nil {
 			dialog.ShowError(err, ui.window)
 		}
 	case "settings":
-		ui.openDesktopCommand(Content.WelcomeCards[4].Title, Content.SystemSettingsCommands, CommandInfo{[]string{"budgie-control-center"}, "No supported settings tool was found."})
+		title := Content.WelcomeCardTitle("settings", "System Settings")
+		ui.openDesktopCommand(title, Content.SystemSettingsCommands, CommandInfo{[]string{"budgie-control-center"}, "No supported settings tool was found."})
 	case "donate":
 		if err := openURL(ui.app, "https://opencollective.com/getsolus"); err != nil {
 			dialog.ShowError(err, ui.window)

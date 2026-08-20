@@ -43,4 +43,18 @@ Action = "updates"
 	if len(Content.WelcomeCards) != 1 || Content.WelcomeCards[0].Action != "updates" {
 		t.Errorf("failed to parse WelcomeCards, got: %+v", Content.WelcomeCards)
 	}
+
+	if label := Content.NavLabel("test", "fallback"); label != "Test Label" {
+		t.Errorf("expected 'Test Label', got '%s'", label)
+	}
+	if label := Content.NavLabel("missing", "fallback"); label != "fallback" {
+		t.Errorf("expected 'fallback', got '%s'", label)
+	}
+
+	if title := Content.WelcomeCardTitle("updates", "fallback"); title != "Test Card" {
+		t.Errorf("expected 'Test Card', got '%s'", title)
+	}
+	if title := Content.WelcomeCardTitle("missing", "fallback"); title != "fallback" {
+		t.Errorf("expected 'fallback', got '%s'", title)
+	}
 }

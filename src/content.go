@@ -71,6 +71,26 @@ type AppContent struct {
 	UI                     UIStrings                  `toml:"UI"`
 }
 
+// NavLabel retrieves the label for a given navigation key or returns the fallback if not found.
+func (c *AppContent) NavLabel(key, fallback string) string {
+	for _, item := range c.NavItems {
+		if item.Key == key {
+			return item.Label
+		}
+	}
+	return fallback
+}
+
+// WelcomeCardTitle retrieves the title for a card action identifier or returns the fallback.
+func (c *AppContent) WelcomeCardTitle(action, fallback string) string {
+	for _, card := range c.WelcomeCards {
+		if card.Action == action {
+			return card.Title
+		}
+	}
+	return fallback
+}
+
 var Content AppContent
 
 // getSystemLanguage detects the system locale and returns the base language code.
