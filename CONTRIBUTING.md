@@ -45,9 +45,15 @@ go test -v ./src/...
 **Compiling a Release Binary:**
 To build a fully stripped and optimized release binary:
 ```bash
-go build -tags wayland -ldflags="-s -w" -o bin/solus-welcome ./src
+go build -tags wayland -ldflags="-s -w" -trimpath -o bin/solus-welcome ./src
 ```
-*Note: We also highly recommend compressing the final binary using UPX (`upx --best bin/solus-welcome`).*
+
+**Compressing with UPX:**
+To produce the lightweight standalone compressed binary:
+```bash
+cp bin/solus-welcome bin/solus-welcome-upx-compressed
+upx --best --lzma bin/solus-welcome-upx-compressed
+```
 
 ## Code Style & Conventions
 
