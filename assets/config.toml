@@ -66,6 +66,10 @@ Missing = "Discover is not installed."
 Command = ["plasma-discover"]
 Missing = "Discover is not installed."
 
+[SoftwareCommands.xfce]
+Command = ["gnome-software"]
+Missing = "Software centre is not installed."
+
 
 [CustomiseCommands.budgie]
 Command = ["budgie-desktop-settings"]
