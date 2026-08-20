@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"errors"
 	"net"
 	"net/url"
@@ -105,14 +107,17 @@ func shellQuote(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }
 
-// hasInternetConnection verifies internet connectivity by attempting a quick TCP connection to a public DNS server.
+// hasInternetConnection verifies internet connectivity by attempting a quick TCP connection to public DNS servers.
 func hasInternetConnection() bool {
-	conn, err := net.DialTimeout("tcp", "1.1.1.1:53", 2*time.Second)
-	if err != nil {
-		return false
+	targets := []string{"1.1.1.1:53", "8.8.8.8:53", "9.9.9.9:53"}
+	for _, target := range targets {
+		conn, err := net.DialTimeout("tcp", target, 1*time.Second)
+		if err == nil {
+			_ = conn.Close()
+			return true
+		}
 	}
-	_ = conn.Close()
-	return true
+	return false
 }
 
 // countAvailableUpdates queries the eopkg package manager to determine the number of available system updates.
@@ -130,12 +135,18 @@ func countAvailableUpdates() (int, error) {
 		return 0, errors.New(message)
 	}
 
+	return parseAvailableUpdates(output), nil
+}
+
+// parseAvailableUpdates counts the upgrade lines from eopkg list-upgrades output bytes.
+func parseAvailableUpdates(output []byte) int {
 	count := 0
-	for _, line := range strings.Split(string(output), "\n") {
-		line = strings.TrimSpace(line)
+	scanner := bufio.NewScanner(bytes.NewReader(output))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
 		if line != "" && !strings.HasPrefix(line, "No packages to upgrade") {
 			count++
 		}
 	}
-	return count, nil
+	return count
 }

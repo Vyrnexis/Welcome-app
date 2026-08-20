@@ -37,3 +37,20 @@ func TestShellQuote(t *testing.T) {
 		}
 	}
 }
+
+// TestParseAvailableUpdates validates counting packages from eopkg output.
+func TestParseAvailableUpdates(t *testing.T) {
+	output := []byte(`
+package1 - desc 1
+package2 - desc 2
+package3 - desc 3
+`)
+	if count := parseAvailableUpdates(output); count != 3 {
+		t.Errorf("expected 3 updates, got %d", count)
+	}
+
+	noUpdates := []byte("No packages to upgrade.\n")
+	if count := parseAvailableUpdates(noUpdates); count != 0 {
+		t.Errorf("expected 0 updates, got %d", count)
+	}
+}
