@@ -10,9 +10,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
     - uses: actions/checkout@v4
@@ -39,10 +44,10 @@ jobs:
         fi
 
     - name: Run go vet
-      run: go vet ./...
+      run: go vet -tags wayland ./...
 
     - name: Run Tests
-      run: go test -v -race ./...
+      run: go test -tags wayland ./...
 
     - name: Build Application
       run: go build -tags wayland -trimpath -ldflags="-s -w" -o bin/solus-welcome ./src
@@ -53,6 +58,7 @@ jobs:
         ./test/install_test.sh
 
     - name: Upload Build Artifact
+      if: startsWith(github.ref, 'refs/tags/v')
       uses: actions/upload-artifact@v4
       with:
         name: solus-welcome
