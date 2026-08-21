@@ -88,6 +88,7 @@ jobs:
 
     - name: Package Release Assets
       run: |
+        chmod +x release-bin/solus-welcome
         upx --best --lzma release-bin/solus-welcome
         ARCHIVE_NAME="solus-welcome-${{ github.ref_name }}-linux-x86_64.tar.gz"
         PACKAGE_DIR_NAME="solus-welcome-${{ github.ref_name }}"
