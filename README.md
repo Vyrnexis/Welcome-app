@@ -37,25 +37,25 @@ The application is written in Go with the [Fyne](https://fyne.io/) GUI toolkit a
 
 ### Install a published release
 
-Download the Linux x86-64 archive and `checksums.txt` from the [Releases page](https://github.com/Vyrnexis/welcome-app/releases). Keep both files in the same directory and verify the archive before extracting it:
+Download the Linux x86-64 archive from the [Releases page](https://github.com/Vyrnexis/welcome-app/releases). This is the only file required to install Solus Welcome.
+
+The optional `checksums.txt` release asset can verify the archive before extraction when both files are in the same directory:
 
 ```bash
 sha256sum --check checksums.txt
 ```
 
-Extract the archive into an empty directory, enter that directory, and install its prebuilt binary:
+The archive contains a versioned top-level directory. Extract it, enter that directory, and run the installer:
 
 ```bash
-./install.sh --prebuilt
+tar -xzf solus-welcome-v0.1.0-linux-x86_64.tar.gz
+cd solus-welcome-v0.1.0
+./install.sh
 ```
 
-The release archive also contains `src/`, `go.mod`, and `go.sum`, so it can build and install directly from source:
+The binary release does not contain source code. Its installer detects the packaged binary, installs it without presenting a build menu, and requests `sudo` only when system permissions are required.
 
-```bash
-./install.sh --build
-```
-
-Running `./install.sh` without an option presents an interactive choice between these modes.
+GitHub separately provides automatic “Source code” archives for developers. Those downloads are not required for end-user installation.
 
 ### Install from a repository checkout
 
@@ -66,6 +66,8 @@ cd welcome-app
 ```
 
 Use `./install.sh --prebuilt` instead when installing the optimized binary already stored in `bin/solus-welcome`.
+
+Repository and source checkouts containing both `bin/solus-welcome` and `src/` present an interactive choice when `./install.sh` is run without an option. A source-only checkout automatically selects the build mode.
 
 ### Installation paths
 
@@ -178,7 +180,9 @@ Malformed regional translations are reported while the loader continues to a val
 
 Every push to `main` and every pull request targeting `main` runs formatting validation, `go vet`, race-enabled Go tests, the stripped Wayland build, and staged installer tests.
 
-Tags beginning with `v` run a separate release job with repository write permission. That job installs UPX, compresses the tested build artifact, verifies the archive contents, generates a SHA-256 checksum, and publishes the GitHub release.
+Tags beginning with `v` run a separate release job with repository write permission. That job installs and verifies UPX, compresses the tested build artifact, creates a binary-only archive under a versioned top-level directory, verifies the archive contents, generates a SHA-256 checksum, and publishes the GitHub release.
+
+GitHub automatically adds separate source-code ZIP and tar archives to each release. End users should select the named `solus-welcome-<version>-linux-x86_64.tar.gz` asset instead.
 
 ## Contributing
 

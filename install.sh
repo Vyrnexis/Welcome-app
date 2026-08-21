@@ -12,6 +12,14 @@ if [[ "$PREFIX" != /* || "$PREFIX" == *[$'\n\r\t ']* ]]; then
 fi
 PREFIX="${PREFIX%/}"
 INSTALL_ROOT="${DESTDIR}${PREFIX}"
+prebuilt_available=false
+source_available=false
+if [[ -f "$APP_BIN" ]]; then
+  prebuilt_available=true
+fi
+if [[ -d "$ROOT_DIR/src" && -f "$ROOT_DIR/go.mod" && -f "$ROOT_DIR/go.sum" ]]; then
+  source_available=true
+fi
 
 # usage prints the supported non-interactive installation modes.
 usage() {
@@ -38,23 +46,32 @@ if [[ $# -eq 1 ]]; then
       ;;
   esac
 else
-  echo "Please select an installation method:"
-  echo "1) Install from pre-compiled binary"
-  echo "2) Compile from source and install"
-  read -r -p "Enter choice [1-2]: " choice
+  if [[ "$prebuilt_available" == true && "$source_available" == true ]]; then
+    echo "Please select an installation method:"
+    echo "1) Install from pre-compiled binary"
+    echo "2) Compile from source and install"
+    read -r -p "Enter choice [1-2]: " choice
 
-  case "$choice" in
-    1)
-      mode="prebuilt"
-      ;;
-    2)
-      mode="build"
-      ;;
-    *)
-      echo "Invalid choice. Exiting." >&2
-      exit 1
-      ;;
-  esac
+    case "$choice" in
+      1)
+        mode="prebuilt"
+        ;;
+      2)
+        mode="build"
+        ;;
+      *)
+        echo "Invalid choice. Exiting." >&2
+        exit 1
+        ;;
+    esac
+  elif [[ "$prebuilt_available" == true ]]; then
+    mode="prebuilt"
+  elif [[ "$source_available" == true ]]; then
+    mode="build"
+  else
+    echo "Error: Neither a prebuilt binary nor source files are available." >&2
+    exit 1
+  fi
 fi
 
 case "$mode" in
@@ -66,6 +83,10 @@ case "$mode" in
     echo "Using existing prebuilt binary..."
     ;;
   build)
+    if [[ "$source_available" != true ]]; then
+      echo "Error: Source files are not included in this release package." >&2
+      exit 1
+    fi
     echo "Compiling from source..."
     mkdir -p "$BIN_DIR"
     go build -tags wayland -trimpath -ldflags="-s -w" -o "$APP_BIN" ./src

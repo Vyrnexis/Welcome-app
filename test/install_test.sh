@@ -68,7 +68,28 @@ run_install_test() {
   fi
 }
 
+# run_binary_bundle_test verifies source-free release packages install without prompting.
+run_binary_bundle_test() {
+  local bundle_dir="$TEST_ROOT/solus-welcome-v0.1.0"
+  local test_destdir="$TEST_ROOT/bundle-install"
+  local install_root="$test_destdir/usr"
+  mkdir -p "$bundle_dir/bin" "$test_destdir"
+  cp "$ROOT_DIR/bin/solus-welcome" "$bundle_dir/bin/"
+  cp -r "$ROOT_DIR/assets" "$bundle_dir/"
+  cp "$ROOT_DIR/install.sh" "$ROOT_DIR/solus-welcome.desktop" "$bundle_dir/"
+
+  DESTDIR="$test_destdir" PREFIX="/usr" "$bundle_dir/install.sh"
+  assert_mode 755 "$install_root/bin/solus-welcome"
+  assert_mode 644 "$install_root/share/solus-welcome/assets/config.toml"
+  assert_mode 644 "$install_root/share/applications/solus-welcome.desktop"
+
+  if DESTDIR="$test_destdir" PREFIX="/usr" "$bundle_dir/install.sh" --build >/dev/null 2>&1; then
+    fail "source-free release package unexpectedly accepted --build"
+  fi
+}
+
 run_install_test "/usr"
 run_install_test "/opt/solus-welcome"
+run_binary_bundle_test
 
 echo "install test passed"

@@ -75,19 +75,32 @@ jobs:
         path: release-bin
 
     - name: Install Release Dependency
-      run: sudo apt-get install -yq upx
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -yq upx
+        upx --version
 
     - name: Package Release Assets
       run: |
         upx --best --lzma release-bin/solus-welcome
         ARCHIVE_NAME="solus-welcome-${{ github.ref_name }}-linux-x86_64.tar.gz"
+        PACKAGE_DIR_NAME="solus-welcome-${{ github.ref_name }}"
         STAGING_DIR="$(mktemp -d)"
-        mkdir -p "$STAGING_DIR/bin"
-        cp release-bin/solus-welcome "$STAGING_DIR/bin/"
-        cp -r assets src solus-welcome.desktop install.sh README.md go.mod go.sum "$STAGING_DIR/"
-        tar -czf "$ARCHIVE_NAME" -C "$STAGING_DIR" bin assets src solus-welcome.desktop install.sh README.md go.mod go.sum
-        for required_path in bin/solus-welcome assets/config.toml src/main.go install.sh go.mod go.sum; do
+        PACKAGE_DIR="$STAGING_DIR/$PACKAGE_DIR_NAME"
+        mkdir -p "$PACKAGE_DIR/bin"
+        cp release-bin/solus-welcome "$PACKAGE_DIR/bin/"
+        cp -r assets solus-welcome.desktop install.sh README.md "$PACKAGE_DIR/"
+        tar -czf "$ARCHIVE_NAME" -C "$STAGING_DIR" "$PACKAGE_DIR_NAME"
+        for required_path in bin/solus-welcome assets/config.toml install.sh README.md solus-welcome.desktop; do
+          required_path="$PACKAGE_DIR_NAME/$required_path"
           tar -tzf "$ARCHIVE_NAME" "$required_path" >/dev/null
+        done
+        for excluded_path in src go.mod go.sum; do
+          excluded_path="$PACKAGE_DIR_NAME/$excluded_path"
+          if tar -tzf "$ARCHIVE_NAME" "$excluded_path" >/dev/null 2>&1; then
+            echo "Unexpected source path in release archive: $excluded_path" >&2
+            exit 1
+          fi
         done
         rm -rf "$STAGING_DIR"
         sha256sum "$ARCHIVE_NAME" > checksums.txt
