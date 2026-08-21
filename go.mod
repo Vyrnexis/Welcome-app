@@ -1,4 +1,4 @@
-module welcome-app
+module github.com/Vyrnexis/welcome-app
 
 go 1.26.4
 

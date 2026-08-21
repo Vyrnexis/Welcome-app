@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -43,6 +44,29 @@ func TestAutostartManagement(t *testing.T) {
 
 	if err := setAutostartEnabled(false, baseDir); err != nil {
 		t.Errorf("idempotent disable should not return error: %v", err)
+	}
+}
+
+// TestAutostartPathsUseInstallationPrefix verifies custom-prefix installations retain valid launcher paths.
+func TestAutostartPathsUseInstallationPrefix(t *testing.T) {
+	prefix := t.TempDir()
+	baseDir := filepath.Join(prefix, "share", "solus-welcome")
+	launcher := filepath.Join(prefix, "bin", "solus-welcome")
+	icon := filepath.Join(baseDir, "assets", "logo.svg")
+	for _, path := range []string{launcher, icon} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatalf("create parent directory: %v", err)
+		}
+		if err := os.WriteFile(path, []byte("test"), 0o755); err != nil {
+			t.Fatalf("write test file: %v", err)
+		}
+	}
+
+	if got := autostartExec(baseDir); got != launcher {
+		t.Errorf("autostartExec() = %q, want %q", got, launcher)
+	}
+	if got := autostartIcon(baseDir); got != icon {
+		t.Errorf("autostartIcon() = %q, want %q", got, icon)
 	}
 }
 

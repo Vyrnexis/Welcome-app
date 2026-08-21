@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -55,7 +56,7 @@ func TestSystemDetailsSummary(t *testing.T) {
 		t.Error("system details summary should not be empty")
 	}
 	arch := architectureLabel()
-	if arch != "" && len(summary) < len(arch) {
-		t.Errorf("system details summary too short: %q", summary)
+	if !strings.Contains(summary, arch) {
+		t.Errorf("system details summary %q does not contain architecture %q", summary, arch)
 	}
 }

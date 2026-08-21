@@ -3,8 +3,8 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
-	"net"
 	"net/url"
 	"os/exec"
 	"strings"
@@ -13,7 +13,7 @@ import (
 	"fyne.io/fyne/v2"
 )
 
-const offlineMessage = "No internet connection was detected."
+const updateCheckTimeout = 30 * time.Second
 
 // openURL parses a raw URL string and opens it in the user's default web browser.
 func openURL(app fyne.App, rawURL string) error {
@@ -42,12 +42,8 @@ func launchCommand(command []string) error {
 	return nil
 }
 
-// launchTerminalCommand runs a shell command inside a terminal emulator, optionally checking for internet.
-func launchTerminalCommand(title, shellCommand string, requireInternet bool) error {
-	if requireInternet && !hasInternetConnection() {
-		return errors.New(offlineMessage)
-	}
-
+// launchTerminalCommand runs a shell command inside a supported terminal emulator.
+func launchTerminalCommand(title, shellCommand string) error {
 	command := terminalCommand(title, shellCommand)
 	if len(command) == 0 {
 		return errors.New("no supported terminal emulator was found")
@@ -107,27 +103,16 @@ func shellQuote(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }
 
-// hasInternetConnection verifies internet connectivity by attempting a quick TCP connection to public DNS servers.
-func hasInternetConnection() bool {
-	targets := []string{"1.1.1.1:53", "8.8.8.8:53", "9.9.9.9:53"}
-	for _, target := range targets {
-		conn, err := net.DialTimeout("tcp", target, 1*time.Second)
-		if err == nil {
-			_ = conn.Close()
-			return true
-		}
-	}
-	return false
-}
-
 // countAvailableUpdates queries the eopkg package manager to determine the number of available system updates.
 func countAvailableUpdates() (int, error) {
-	if !hasInternetConnection() {
-		return 0, errors.New(offlineMessage)
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), updateCheckTimeout)
+	defer cancel()
 
-	output, err := exec.Command("eopkg", "list-upgrades").CombinedOutput()
+	output, err := exec.CommandContext(ctx, "eopkg", "list-upgrades").CombinedOutput()
 	if err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return 0, errors.New("update check timed out")
+		}
 		message := strings.TrimSpace(string(output))
 		if message == "" {
 			message = "unable to check updates"

@@ -113,9 +113,9 @@ Tagline = "Bienvenue"
 	}
 }
 
-// TestLoadContentMalformedLocaleRetainsBase ensures base configuration is preserved if a locale file has syntax errors.
-func TestLoadContentMalformedLocaleRetainsBase(t *testing.T) {
-	t.Setenv("LANG", "fr_FR.UTF-8")
+// TestLoadContentMalformedRegionalLocale verifies errors are reported while a base-language fallback is loaded.
+func TestLoadContentMalformedRegionalLocale(t *testing.T) {
+	t.Setenv("LANG", "fr_CA.UTF-8")
 	tmpDir := t.TempDir()
 	localesDir := filepath.Join(tmpDir, "assets", "locales")
 	if err := os.MkdirAll(localesDir, 0o755); err != nil {
@@ -131,18 +131,25 @@ Close = "Close"
 [UI
 this is invalid toml = [unclosed
 `)
+	localizedConfig := []byte(`
+[UI]
+Tagline = "Bienvenue"
+`)
 	if err := os.WriteFile(filepath.Join(tmpDir, "assets", "config.toml"), baseConfig, 0o644); err != nil {
 		t.Fatalf("write base config: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(localesDir, "fr.toml"), malformedConfig, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(localesDir, "fr_CA.toml"), malformedConfig, 0o644); err != nil {
 		t.Fatalf("write malformed config: %v", err)
 	}
-
-	if err := LoadContent(tmpDir); err != nil {
-		t.Fatalf("LoadContent() returned error for malformed locale: %v", err)
+	if err := os.WriteFile(filepath.Join(localesDir, "fr.toml"), localizedConfig, 0o644); err != nil {
+		t.Fatalf("write fallback locale: %v", err)
 	}
-	if Content.UI.Tagline != "Welcome" {
-		t.Errorf("Content.UI.Tagline = %q, want base fallback %q", Content.UI.Tagline, "Welcome")
+
+	if err := LoadContent(tmpDir); err == nil {
+		t.Fatal("LoadContent() error = nil, want malformed regional locale error")
+	}
+	if Content.UI.Tagline != "Bienvenue" {
+		t.Errorf("Content.UI.Tagline = %q, want language fallback %q", Content.UI.Tagline, "Bienvenue")
 	}
 	if Content.UI.Close != "Close" {
 		t.Errorf("Content.UI.Close = %q, want base fallback %q", Content.UI.Close, "Close")

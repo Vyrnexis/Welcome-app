@@ -7,25 +7,52 @@ import (
 
 // findBaseDir locates the application's root directory by searching common execution paths for the assets folder.
 func findBaseDir() string {
-	candidates := make([]string, 0, 4)
-
-	if workingDir, err := os.Getwd(); err == nil {
-		candidates = append(candidates, workingDir)
+	workingDir := ""
+	if value, err := os.Getwd(); err == nil {
+		workingDir = value
 	}
-
-	if executable, err := os.Executable(); err == nil {
-		executableDir := filepath.Dir(executable)
-		candidates = append(candidates, executableDir, filepath.Dir(executableDir))
+	executable := ""
+	if value, err := os.Executable(); err == nil {
+		executable = value
 	}
-
-	candidates = append(candidates, "/usr/share/solus-welcome")
-	for _, candidate := range candidates {
+	for _, candidate := range baseDirCandidates(workingDir, executable) {
 		if fileExists(filepath.Join(candidate, "assets", "logo.svg")) {
 			return candidate
 		}
 	}
 
 	return "."
+}
+
+// baseDirCandidates returns development and prefix-based asset locations in lookup order.
+func baseDirCandidates(workingDir, executable string) []string {
+	candidates := make([]string, 0, 5)
+	if workingDir != "" {
+		candidates = append(candidates, workingDir)
+	}
+	if executable != "" {
+		executableDir := filepath.Dir(executable)
+		prefixDir := filepath.Dir(executableDir)
+		candidates = append(
+			candidates,
+			executableDir,
+			prefixDir,
+			filepath.Join(prefixDir, "share", "solus-welcome"),
+		)
+	}
+
+	candidates = append(candidates, "/usr/share/solus-welcome")
+	return candidates
+}
+
+// installationPrefix returns the prefix containing an installed share/solus-welcome directory.
+func installationPrefix(baseDir string) string {
+	cleanBaseDir := filepath.Clean(baseDir)
+	shareDir := filepath.Dir(cleanBaseDir)
+	if filepath.Base(cleanBaseDir) != "solus-welcome" || filepath.Base(shareDir) != "share" {
+		return ""
+	}
+	return filepath.Dir(shareDir)
 }
 
 // fileExists returns a boolean indicating whether a valid regular file exists at the provided path.

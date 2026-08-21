@@ -16,17 +16,18 @@ import (
 )
 
 type welcomeUI struct {
-	app               fyne.App
-	window            fyne.Window
-	baseDir           string
-	desktop           DesktopInfo
-	content           *fyne.Container
-	updateButton      *widget.Button
-	navButtons        map[string]*widget.Button
-	currentPage       string
-	checkingUpdates   bool
-	cachedUpdateCount int
-	hasCheckedUpdates bool
+	app                fyne.App
+	window             fyne.Window
+	baseDir            string
+	desktop            DesktopInfo
+	content            *fyne.Container
+	updateButton       *widget.Button
+	navButtons         map[string]*widget.Button
+	currentPage        string
+	checkingUpdates    bool
+	cachedUpdateCount  int
+	hasCheckedUpdates  bool
+	checkUpdatesOnLoad bool
 }
 
 // main initializes the application, sets the theme, and launches the main window.
@@ -38,16 +39,17 @@ func main() {
 	baseDir := findBaseDir()
 
 	if err := LoadContent(baseDir); err != nil {
-		fmt.Println("Warning: Failed to load config.toml:", err)
+		fmt.Println("Warning: Content loaded with errors:", err)
 	}
 
 	ui := &welcomeUI{
-		app:        a,
-		window:     w,
-		baseDir:    baseDir,
-		desktop:    detectDesktop(),
-		content:    container.NewStack(),
-		navButtons: make(map[string]*widget.Button),
+		app:                a,
+		window:             w,
+		baseDir:            baseDir,
+		desktop:            detectDesktop(),
+		content:            container.NewStack(),
+		navButtons:         make(map[string]*widget.Button),
+		checkUpdatesOnLoad: true,
 	}
 
 	w.SetContent(ui.buildLayout())
@@ -198,7 +200,9 @@ func (ui *welcomeUI) systemCard() fyne.CanvasObject {
 	})
 	ui.updateButton.Importance = widget.HighImportance
 
-	ui.checkUpdates(false, false)
+	if ui.checkUpdatesOnLoad {
+		ui.checkUpdates(false, false)
+	}
 	details := container.NewVBox(name, edition, sysDetails, layout.NewSpacer(), ui.updateButton)
 	return widget.NewCard("", "", container.NewHBox(desktopIcon, details))
 }
@@ -311,7 +315,7 @@ func (ui *welcomeUI) openWelcomeAction(action string) {
 	switch action {
 	case "updates":
 		title := Content.WelcomeCardTitle("updates", "Update your system")
-		if err := launchTerminalCommand(title, "sudo eopkg upgrade", true); err != nil {
+		if err := launchTerminalCommand(title, "sudo eopkg upgrade"); err != nil {
 			dialog.ShowInformation(title, err.Error(), ui.window)
 		}
 	case "software":

@@ -6,8 +6,14 @@ BIN_DIR="$ROOT_DIR/bin"
 APP_BIN="$BIN_DIR/solus-welcome"
 DESTDIR="${DESTDIR:-}"
 PREFIX="${PREFIX:-/usr}"
+if [[ "$PREFIX" != /* || "$PREFIX" == *[$'\n\r\t ']* ]]; then
+  echo "Error: PREFIX must be an absolute path without whitespace." >&2
+  exit 1
+fi
+PREFIX="${PREFIX%/}"
 INSTALL_ROOT="${DESTDIR}${PREFIX}"
 
+# usage prints the supported non-interactive installation modes.
 usage() {
   echo "Usage: $0 [--prebuilt|-p|--build|-b]"
 }
@@ -71,10 +77,25 @@ if [[ -z "$DESTDIR" && "${EUID:-$(id -u)}" -ne 0 ]]; then
   privilege=(sudo)
 fi
 
+# install_file installs a regular data file with standard read permissions.
 install_file() {
   local source_path="$1"
   local destination_path="$2"
   "${privilege[@]}" install -Dm644 "$source_path" "$destination_path"
+}
+
+# render_desktop_file writes prefix-aware executable and icon paths to a desktop entry.
+render_desktop_file() {
+  local destination_path="$1"
+  awk -v prefix="$PREFIX" '
+    $0 == "Exec=/usr/bin/solus-welcome" {
+      $0 = "Exec=" prefix "/bin/solus-welcome"
+    }
+    $0 == "Icon=/usr/share/solus-welcome/assets/logo.svg" {
+      $0 = "Icon=" prefix "/share/solus-welcome/assets/logo.svg"
+    }
+    { print }
+  ' "$ROOT_DIR/solus-welcome.desktop" > "$destination_path"
 }
 
 "${privilege[@]}" install -Dm755 "$APP_BIN" "$INSTALL_ROOT/bin/solus-welcome"
@@ -94,6 +115,9 @@ for svg in logo budgie gnome kde xfce; do
   install_file "$ROOT_DIR/assets/$svg.svg" "$INSTALL_ROOT/share/solus-welcome/assets/$svg.svg"
 done
 
-install_file "$ROOT_DIR/solus-welcome.desktop" "$INSTALL_ROOT/share/applications/solus-welcome.desktop"
+desktop_file="$(mktemp)"
+trap 'rm -f -- "$desktop_file"' EXIT
+render_desktop_file "$desktop_file"
+install_file "$desktop_file" "$INSTALL_ROOT/share/applications/solus-welcome.desktop"
 
 echo "Installed Solus Welcome to $INSTALL_ROOT/bin/solus-welcome"

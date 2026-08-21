@@ -69,13 +69,16 @@ func desktopFileContent(baseDir string) string {
 
 // autostartExec determines the correct absolute path to the executable to use inside the autostart entry.
 func autostartExec(baseDir string) string {
-	installedLauncher := "/usr/bin/solus-welcome"
-	if _, err := os.Stat(installedLauncher); err == nil {
-		return installedLauncher
+	if prefix := installationPrefix(baseDir); prefix != "" {
+		installedLauncher := filepath.Join(prefix, "bin", "solus-welcome")
+		if fileExists(installedLauncher) {
+			return quoteDesktopArg(installedLauncher)
+		}
 	}
 
-	if exe, err := os.Executable(); err == nil && fileExists(exe) {
-		return quoteDesktopArg(exe)
+	installedLauncher := "/usr/bin/solus-welcome"
+	if fileExists(installedLauncher) {
+		return installedLauncher
 	}
 
 	localBinary := filepath.Join(baseDir, "bin", "solus-welcome")
@@ -83,16 +86,25 @@ func autostartExec(baseDir string) string {
 		return quoteDesktopArg(localBinary)
 	}
 
+	if exe, err := os.Executable(); err == nil && fileExists(exe) {
+		return quoteDesktopArg(exe)
+	}
+
 	return quoteDesktopArg(filepath.Join(baseDir, "solus-welcome"))
 }
 
 // autostartIcon resolves the absolute path to the application logo for the desktop shortcut.
 func autostartIcon(baseDir string) string {
+	localIcon := filepath.Join(baseDir, "assets", "logo.svg")
+	if fileExists(localIcon) {
+		return localIcon
+	}
+
 	installedIcon := "/usr/share/solus-welcome/assets/logo.svg"
-	if _, err := os.Stat(installedIcon); err == nil {
+	if fileExists(installedIcon) {
 		return installedIcon
 	}
-	return filepath.Join(baseDir, "assets", "logo.svg")
+	return localIcon
 }
 
 // quoteDesktopArg properly escapes and quotes an executable argument for compliance with the desktop entry specification.

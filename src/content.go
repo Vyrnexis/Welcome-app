@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -114,11 +116,13 @@ func getSystemLocales() []string {
 // LoadContent reads the base TOML configuration and applies language-specific overrides if available.
 func LoadContent(baseDir string) error {
 	path := filepath.Join(baseDir, "assets", "config.toml")
-	var content AppContent
-	if _, err := toml.DecodeFile(path, &content); err != nil {
+	var baseContent AppContent
+	if _, err := toml.DecodeFile(path, &baseContent); err != nil {
 		return err
 	}
-	Content = content
+	Content = baseContent
+
+	var localeErrors []error
 
 	for _, loc := range getSystemLocales() {
 		if loc == "en" {
@@ -126,12 +130,17 @@ func LoadContent(baseDir string) error {
 		}
 		localizedPath := filepath.Join(baseDir, "assets", "locales", loc+".toml")
 		if fileExists(localizedPath) {
-			if _, err := toml.DecodeFile(localizedPath, &content); err != nil {
-				return nil
+			var localizedContent AppContent
+			if _, err := toml.DecodeFile(path, &localizedContent); err != nil {
+				return err
 			}
-			Content = content
-			break
+			if _, err := toml.DecodeFile(localizedPath, &localizedContent); err != nil {
+				localeErrors = append(localeErrors, fmt.Errorf("load locale %s: %w", loc, err))
+				continue
+			}
+			Content = localizedContent
+			return errors.Join(localeErrors...)
 		}
 	}
-	return nil
+	return errors.Join(localeErrors...)
 }
