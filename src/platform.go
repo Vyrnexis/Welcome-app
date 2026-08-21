@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -44,4 +45,48 @@ func architectureLabel() string {
 	default:
 		return runtime.GOARCH
 	}
+}
+
+// kernelVersion reads the running Linux kernel release string from the proc filesystem.
+func kernelVersion() string {
+	if data, err := os.ReadFile("/proc/sys/kernel/osrelease"); err == nil {
+		return strings.TrimSpace(string(data))
+	}
+	return ""
+}
+
+// memoryLabel reads total physical RAM from /proc/meminfo and formats it into GiB.
+func memoryLabel() string {
+	data, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.HasPrefix(line, "MemTotal:") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				var kb int64
+				if _, err := fmt.Sscanf(fields[1], "%d", &kb); err == nil && kb > 0 {
+					gib := float64(kb) / 1024 / 1024
+					return fmt.Sprintf("%.1f GiB RAM", gib)
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// systemDetailsSummary formats architecture, kernel, and memory into a concise diagnostic string.
+func systemDetailsSummary() string {
+	parts := make([]string, 0, 3)
+	if arch := architectureLabel(); arch != "" {
+		parts = append(parts, arch)
+	}
+	if kernel := kernelVersion(); kernel != "" {
+		parts = append(parts, "Linux "+kernel)
+	}
+	if mem := memoryLabel(); mem != "" {
+		parts = append(parts, mem)
+	}
+	return strings.Join(parts, " • ")
 }

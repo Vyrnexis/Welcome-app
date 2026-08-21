@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -51,6 +52,7 @@ func main() {
 
 	w.SetContent(ui.buildLayout())
 	w.Resize(fyne.NewSize(1080, 720))
+	ui.setupKeybindings()
 	ui.selectPage("welcome")
 	w.ShowAndRun()
 }
@@ -182,14 +184,14 @@ func (ui *welcomeUI) welcomePage() fyne.CanvasObject {
 	return container.NewPadded(container.NewVScroll(maxWidth(page, 1180)))
 }
 
-// systemCard generates a detailed card displaying the current desktop edition and architecture.
+// systemCard generates a detailed card displaying the current desktop edition and system diagnostics.
 func (ui *welcomeUI) systemCard() fyne.CanvasObject {
 	desktopIcon := desktopIcon(ui.baseDir, ui.desktop)
 
 	name := headingText(Content.UI.SolusLinux, 22)
 	edition := widget.NewLabel(ui.desktop.Name + Content.UI.EditionSuffix)
 	edition.TextStyle = fyne.TextStyle{Bold: true}
-	arch := widget.NewLabel(architectureLabel())
+	sysDetails := widget.NewLabel(systemDetailsSummary())
 
 	ui.updateButton = widget.NewButton(Content.UI.CheckForUpdates, func() {
 		ui.checkUpdates(true, true)
@@ -197,8 +199,28 @@ func (ui *welcomeUI) systemCard() fyne.CanvasObject {
 	ui.updateButton.Importance = widget.HighImportance
 
 	ui.checkUpdates(false, false)
-	details := container.NewVBox(name, edition, arch, layout.NewSpacer(), ui.updateButton)
+	details := container.NewVBox(name, edition, sysDetails, layout.NewSpacer(), ui.updateButton)
 	return widget.NewCard("", "", container.NewHBox(desktopIcon, details))
+}
+
+// setupKeybindings binds global keyboard navigation shortcuts to the application window.
+func (ui *welcomeUI) setupKeybindings() {
+	canvas := ui.window.Canvas()
+	canvas.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyEscape}, func(fyne.Shortcut) {
+		ui.window.Close()
+	})
+	canvas.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyF1}, func(fyne.Shortcut) {
+		ui.selectPage("welcome")
+	})
+	canvas.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyF2}, func(fyne.Shortcut) {
+		ui.selectPage("customise")
+	})
+	canvas.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyF3}, func(fyne.Shortcut) {
+		ui.selectPage("support")
+	})
+	canvas.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyF4}, func(fyne.Shortcut) {
+		ui.selectPage("contribute")
+	})
 }
 
 // welcomeCard builds a standard action card for the welcome screen grid.

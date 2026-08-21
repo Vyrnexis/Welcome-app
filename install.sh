@@ -4,51 +4,96 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BIN_DIR="$ROOT_DIR/bin"
 APP_BIN="$BIN_DIR/solus-welcome"
+DESTDIR="${DESTDIR:-}"
+PREFIX="${PREFIX:-/usr}"
+INSTALL_ROOT="${DESTDIR}${PREFIX}"
 
-echo "Please select an installation method:"
-echo "1) Install from pre-compiled binary"
-echo "2) Compile from source and install"
-read -p "Enter choice [1-2]: " choice
+usage() {
+  echo "Usage: $0 [--prebuilt|-p|--build|-b]"
+}
 
-case $choice in
-  1)
+mode=""
+if [[ $# -gt 1 ]]; then
+  usage >&2
+  exit 1
+fi
+
+if [[ $# -eq 1 ]]; then
+  case "$1" in
+    --prebuilt|-p)
+      mode="prebuilt"
+      ;;
+    --build|-b)
+      mode="build"
+      ;;
+    *)
+      usage >&2
+      exit 1
+      ;;
+  esac
+else
+  echo "Please select an installation method:"
+  echo "1) Install from pre-compiled binary"
+  echo "2) Compile from source and install"
+  read -r -p "Enter choice [1-2]: " choice
+
+  case "$choice" in
+    1)
+      mode="prebuilt"
+      ;;
+    2)
+      mode="build"
+      ;;
+    *)
+      echo "Invalid choice. Exiting." >&2
+      exit 1
+      ;;
+  esac
+fi
+
+case "$mode" in
+  prebuilt)
     if [[ ! -f "$APP_BIN" ]]; then
-      echo "Error: Prebuilt binary not found at $APP_BIN"
+      echo "Error: Prebuilt binary not found at $APP_BIN" >&2
       exit 1
     fi
     echo "Using existing prebuilt binary..."
     ;;
-  2)
+  build)
     echo "Compiling from source..."
     mkdir -p "$BIN_DIR"
-    go build -tags wayland -ldflags="-s -w" -o "$APP_BIN" ./src
-    ;;
-  *)
-    echo "Invalid choice. Exiting."
-    exit 1
+    go build -tags wayland -trimpath -ldflags="-s -w" -o "$APP_BIN" ./src
     ;;
 esac
 
-if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
-  install -Dm755 "$APP_BIN" /usr/bin/solus-welcome
-  install -Dm644 "$ROOT_DIR/assets/config.toml" /usr/share/solus-welcome/assets/config.toml
-  cp -r "$ROOT_DIR/assets/locales" /usr/share/solus-welcome/assets/
-  install -Dm644 "$ROOT_DIR/assets/logo.svg" /usr/share/solus-welcome/assets/logo.svg
-  install -Dm644 "$ROOT_DIR/assets/budgie.svg" /usr/share/solus-welcome/assets/budgie.svg
-  install -Dm644 "$ROOT_DIR/assets/gnome.svg" /usr/share/solus-welcome/assets/gnome.svg
-  install -Dm644 "$ROOT_DIR/assets/kde.svg" /usr/share/solus-welcome/assets/kde.svg
-  install -Dm644 "$ROOT_DIR/assets/xfce.svg" /usr/share/solus-welcome/assets/xfce.svg
-  install -Dm644 "$ROOT_DIR/solus-welcome.desktop" /usr/share/applications/solus-welcome.desktop
-else
-  sudo install -Dm755 "$APP_BIN" /usr/bin/solus-welcome
-  sudo install -Dm644 "$ROOT_DIR/assets/config.toml" /usr/share/solus-welcome/assets/config.toml
-  sudo cp -r "$ROOT_DIR/assets/locales" /usr/share/solus-welcome/assets/
-  sudo install -Dm644 "$ROOT_DIR/assets/logo.svg" /usr/share/solus-welcome/assets/logo.svg
-  sudo install -Dm644 "$ROOT_DIR/assets/budgie.svg" /usr/share/solus-welcome/assets/budgie.svg
-  sudo install -Dm644 "$ROOT_DIR/assets/gnome.svg" /usr/share/solus-welcome/assets/gnome.svg
-  sudo install -Dm644 "$ROOT_DIR/assets/kde.svg" /usr/share/solus-welcome/assets/kde.svg
-  sudo install -Dm644 "$ROOT_DIR/assets/xfce.svg" /usr/share/solus-welcome/assets/xfce.svg
-  sudo install -Dm644 "$ROOT_DIR/solus-welcome.desktop" /usr/share/applications/solus-welcome.desktop
+privilege=()
+if [[ -z "$DESTDIR" && "${EUID:-$(id -u)}" -ne 0 ]]; then
+  privilege=(sudo)
 fi
 
-echo "Installed Solus Welcome to /usr/bin/solus-welcome"
+install_file() {
+  local source_path="$1"
+  local destination_path="$2"
+  "${privilege[@]}" install -Dm644 "$source_path" "$destination_path"
+}
+
+"${privilege[@]}" install -Dm755 "$APP_BIN" "$INSTALL_ROOT/bin/solus-welcome"
+install_file "$ROOT_DIR/assets/config.toml" "$INSTALL_ROOT/share/solus-welcome/assets/config.toml"
+
+while IFS= read -r -d '' directory; do
+  relative_path="${directory#"$ROOT_DIR/assets/locales"}"
+  "${privilege[@]}" install -d -m755 "$INSTALL_ROOT/share/solus-welcome/assets/locales$relative_path"
+done < <(find "$ROOT_DIR/assets/locales" -type d -print0)
+
+while IFS= read -r -d '' locale_file; do
+  relative_path="${locale_file#"$ROOT_DIR/assets/locales/"}"
+  install_file "$locale_file" "$INSTALL_ROOT/share/solus-welcome/assets/locales/$relative_path"
+done < <(find "$ROOT_DIR/assets/locales" -type f -print0)
+
+for svg in logo budgie gnome kde xfce; do
+  install_file "$ROOT_DIR/assets/$svg.svg" "$INSTALL_ROOT/share/solus-welcome/assets/$svg.svg"
+done
+
+install_file "$ROOT_DIR/solus-welcome.desktop" "$INSTALL_ROOT/share/applications/solus-welcome.desktop"
+
+echo "Installed Solus Welcome to $INSTALL_ROOT/bin/solus-welcome"

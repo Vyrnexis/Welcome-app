@@ -6,84 +6,145 @@ import (
 	"testing"
 )
 
-func TestLoadContent(t *testing.T) {
-	// Create a temporary directory structure matching our app
-	tmpDir := t.TempDir()
-	assetsDir := filepath.Join(tmpDir, "assets")
-	if err := os.MkdirAll(assetsDir, 0755); err != nil {
-		t.Fatalf("failed to create assets dir: %v", err)
-	}
-
-	// Write a minimal dummy config.toml
-	dummyConfig := []byte(`
-[[NavItems]]
-Key = "test"
-Label = "Test Label"
-
-[[WelcomeCards]]
-Title = "Test Card"
-Action = "updates"
-`)
-
-	configPath := filepath.Join(assetsDir, "config.toml")
-	if err := os.WriteFile(configPath, dummyConfig, 0644); err != nil {
-		t.Fatalf("failed to write dummy config: %v", err)
-	}
-
-	// Test loading the content
-	err := LoadContent(tmpDir)
-	if err != nil {
-		t.Fatalf("LoadContent failed: %v", err)
-	}
-
-	if len(Content.NavItems) != 1 || Content.NavItems[0].Key != "test" {
-		t.Errorf("failed to parse NavItems, got: %+v", Content.NavItems)
-	}
-
-	if len(Content.WelcomeCards) != 1 || Content.WelcomeCards[0].Action != "updates" {
-		t.Errorf("failed to parse WelcomeCards, got: %+v", Content.WelcomeCards)
-	}
-
-	if label := Content.NavLabel("test", "fallback"); label != "Test Label" {
-		t.Errorf("expected 'Test Label', got '%s'", label)
-	}
-	if label := Content.NavLabel("missing", "fallback"); label != "fallback" {
-		t.Errorf("expected 'fallback', got '%s'", label)
-	}
-
-	if title := Content.WelcomeCardTitle("updates", "fallback"); title != "Test Card" {
-		t.Errorf("expected 'Test Card', got '%s'", title)
-	}
-	if title := Content.WelcomeCardTitle("missing", "fallback"); title != "fallback" {
-		t.Errorf("expected 'fallback', got '%s'", title)
-	}
-}
-
-// TestGetSystemLocales validates extraction of locale candidate tags from environment strings.
+// TestGetSystemLocales verifies locale normalization and candidate ordering.
 func TestGetSystemLocales(t *testing.T) {
 	tests := []struct {
-		lang     string
-		expected []string
+		name string
+		lang string
+		want []string
 	}{
-		{"", []string{"en"}},
-		{"C", []string{"en"}},
-		{"POSIX", []string{"en"}},
-		{"fr_FR.UTF-8", []string{"fr_FR", "fr"}},
-		{"pt_BR.UTF-8@euro", []string{"pt_BR", "pt"}},
-		{"de.UTF-8", []string{"de"}},
+		{name: "regional locale", lang: "fr_CA.UTF-8", want: []string{"fr_CA", "fr"}},
+		{name: "simple locale", lang: "de.UTF-8", want: []string{"de"}},
+		{name: "locale with modifier", lang: "sr_RS@latin", want: []string{"sr_RS", "sr"}},
+		{name: "C locale", lang: "C", want: []string{"en"}},
+		{name: "POSIX locale", lang: "POSIX", want: []string{"en"}},
+		{name: "empty locale", lang: "", want: []string{"en"}},
 	}
 
 	for _, tt := range tests {
-		t.Setenv("LANG", tt.lang)
-		result := getSystemLocales()
-		if len(result) != len(tt.expected) {
-			t.Errorf("getSystemLocales(%q) length = %d, expected %d", tt.lang, len(result), len(tt.expected))
-			continue
-		}
-		for i := range result {
-			if result[i] != tt.expected[i] {
-				t.Errorf("getSystemLocales(%q)[%d] = %q, expected %q", tt.lang, i, result[i], tt.expected[i])
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("LANG", tt.lang)
+			got := getSystemLocales()
+			if len(got) != len(tt.want) {
+				t.Fatalf("getSystemLocales() = %v, want %v", got, tt.want)
 			}
-		}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("getSystemLocales()[%d] = %q, want %q", i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}
+
+// TestLoadContent verifies base configuration loading.
+func TestLoadContent(t *testing.T) {
+	t.Setenv("LANG", "en_US.UTF-8")
+	tmpDir := t.TempDir()
+	assetsDir := filepath.Join(tmpDir, "assets")
+	if err := os.MkdirAll(assetsDir, 0o755); err != nil {
+		t.Fatalf("create assets dir: %v", err)
+	}
+
+	config := []byte(`
+[[NavItems]]
+Key = "welcome"
+Label = "Welcome"
+
+[[WelcomeCards]]
+Title = "Test Title"
+Action = "updates"
+`)
+	if err := os.WriteFile(filepath.Join(assetsDir, "config.toml"), config, 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	if err := LoadContent(tmpDir); err != nil {
+		t.Fatalf("LoadContent() error = %v", err)
+	}
+
+	if label := Content.NavLabel("welcome", "Fallback"); label != "Welcome" {
+		t.Errorf("NavLabel(welcome) = %q, want %q", label, "Welcome")
+	}
+	if label := Content.NavLabel("unknown", "Fallback"); label != "Fallback" {
+		t.Errorf("NavLabel(unknown) = %q, want %q", label, "Fallback")
+	}
+	if title := Content.WelcomeCardTitle("updates", "Fallback"); title != "Test Title" {
+		t.Errorf("WelcomeCardTitle(updates) = %q, want %q", title, "Test Title")
+	}
+	if title := Content.WelcomeCardTitle("missing", "Fallback"); title != "Fallback" {
+		t.Errorf("WelcomeCardTitle(missing) = %q, want %q", title, "Fallback")
+	}
+}
+
+// TestLoadContentLocalizedOverride verifies that regional and base locale files override configuration.
+func TestLoadContentLocalizedOverride(t *testing.T) {
+	t.Setenv("LANG", "fr_CA.UTF-8")
+	tmpDir := t.TempDir()
+	localesDir := filepath.Join(tmpDir, "assets", "locales")
+	if err := os.MkdirAll(localesDir, 0o755); err != nil {
+		t.Fatalf("create locales directory: %v", err)
+	}
+
+	baseConfig := []byte(`
+[UI]
+Tagline = "Welcome"
+Close = "Close"
+`)
+	localizedConfig := []byte(`
+[UI]
+Tagline = "Bienvenue"
+`)
+	if err := os.WriteFile(filepath.Join(tmpDir, "assets", "config.toml"), baseConfig, 0o644); err != nil {
+		t.Fatalf("write base config: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(localesDir, "fr.toml"), localizedConfig, 0o644); err != nil {
+		t.Fatalf("write localized config: %v", err)
+	}
+
+	if err := LoadContent(tmpDir); err != nil {
+		t.Fatalf("LoadContent() error = %v", err)
+	}
+	if Content.UI.Tagline != "Bienvenue" {
+		t.Errorf("Content.UI.Tagline = %q, want %q", Content.UI.Tagline, "Bienvenue")
+	}
+	if Content.UI.Close != "Close" {
+		t.Errorf("Content.UI.Close = %q, want %q", Content.UI.Close, "Close")
+	}
+}
+
+// TestLoadContentMalformedLocaleRetainsBase ensures base configuration is preserved if a locale file has syntax errors.
+func TestLoadContentMalformedLocaleRetainsBase(t *testing.T) {
+	t.Setenv("LANG", "fr_FR.UTF-8")
+	tmpDir := t.TempDir()
+	localesDir := filepath.Join(tmpDir, "assets", "locales")
+	if err := os.MkdirAll(localesDir, 0o755); err != nil {
+		t.Fatalf("create locales directory: %v", err)
+	}
+
+	baseConfig := []byte(`
+[UI]
+Tagline = "Welcome"
+Close = "Close"
+`)
+	malformedConfig := []byte(`
+[UI
+this is invalid toml = [unclosed
+`)
+	if err := os.WriteFile(filepath.Join(tmpDir, "assets", "config.toml"), baseConfig, 0o644); err != nil {
+		t.Fatalf("write base config: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(localesDir, "fr.toml"), malformedConfig, 0o644); err != nil {
+		t.Fatalf("write malformed config: %v", err)
+	}
+
+	if err := LoadContent(tmpDir); err != nil {
+		t.Fatalf("LoadContent() returned error for malformed locale: %v", err)
+	}
+	if Content.UI.Tagline != "Welcome" {
+		t.Errorf("Content.UI.Tagline = %q, want base fallback %q", Content.UI.Tagline, "Welcome")
+	}
+	if Content.UI.Close != "Close" {
+		t.Errorf("Content.UI.Close = %q, want base fallback %q", Content.UI.Close, "Close")
 	}
 }

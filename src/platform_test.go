@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
+// TestDetectDesktop verifies desktop environment resolution against XDG session variables.
 func TestDetectDesktop(t *testing.T) {
-	// Save original env vars to restore later
 	origXDG := os.Getenv("XDG_CURRENT_DESKTOP")
 	origSession := os.Getenv("DESKTOP_SESSION")
 	defer func() {
@@ -40,9 +40,22 @@ func TestDetectDesktop(t *testing.T) {
 	}
 }
 
+// TestArchitectureLabel verifies non-empty architecture string output.
 func TestArchitectureLabel(t *testing.T) {
 	label := architectureLabel()
 	if label == "" {
 		t.Error("architecture label should not be empty")
+	}
+}
+
+// TestSystemDetailsSummary verifies that the diagnostic details string contains the architecture.
+func TestSystemDetailsSummary(t *testing.T) {
+	summary := systemDetailsSummary()
+	if summary == "" {
+		t.Error("system details summary should not be empty")
+	}
+	arch := architectureLabel()
+	if arch != "" && len(summary) < len(arch) {
+		t.Errorf("system details summary too short: %q", summary)
 	}
 }

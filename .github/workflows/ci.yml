@@ -3,13 +3,17 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [ "main" ]
+    tags: [ "v*" ]
   pull_request:
     branches: [ "main" ]
+
+permissions:
+  contents: write
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
 
@@ -24,7 +28,7 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo apt-get update -qq
-        sudo apt-get install -yq libgl1-mesa-dev xorg-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxxf86vm-dev libwayland-dev libxkbcommon-dev
+        sudo apt-get install -yq libgl1-mesa-dev xorg-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxxf86vm-dev libwayland-dev libxkbcommon-dev desktop-file-utils upx
 
     - name: Verify Code Formatting
       run: |
@@ -41,10 +45,39 @@ jobs:
       run: go test -v ./...
 
     - name: Build Application
-      run: go build -tags wayland -ldflags="-s -w" -o bin/solus-welcome ./src
-      
+      run: go build -tags wayland -trimpath -ldflags="-s -w" -o bin/solus-welcome ./src
+
+    - name: Test Staged Installation
+      run: |
+        chmod +x test/install_test.sh
+        ./test/install_test.sh
+
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
         name: solus-welcome
         path: bin/solus-welcome
+
+    - name: Package Release Assets
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: |
+        upx --best bin/solus-welcome
+        ARCHIVE_NAME="solus-welcome-${{ github.ref_name }}-linux-x86_64.tar.gz"
+        STAGING_DIR="$(mktemp -d)"
+        mkdir -p "$STAGING_DIR/bin"
+        cp bin/solus-welcome "$STAGING_DIR/bin/"
+        cp -r assets solus-welcome.desktop install.sh README.md "$STAGING_DIR/"
+        tar -czf "$ARCHIVE_NAME" -C "$STAGING_DIR" bin assets solus-welcome.desktop install.sh README.md
+        rm -rf "$STAGING_DIR"
+        sha256sum "$ARCHIVE_NAME" > checksums.txt
+
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create "${{ github.ref_name }}" \
+          "solus-welcome-${{ github.ref_name }}-linux-x86_64.tar.gz" \
+          "checksums.txt" \
+          --title "Solus Welcome ${{ github.ref_name }}" \
+          --generate-notes
