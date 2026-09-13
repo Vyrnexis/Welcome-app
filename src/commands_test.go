@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"testing"
 )
 
@@ -16,6 +17,19 @@ func TestLaunchCommand(t *testing.T) {
 
 	if err := launchCommand([]string{"true"}); err != nil {
 		t.Errorf("expected success launching 'true', got %v", err)
+	}
+}
+
+// TestCommandErrorMessage verifies missing executables use friendly text while other failures remain visible.
+func TestCommandErrorMessage(t *testing.T) {
+	missingErr := launchCommand([]string{"nonexistent-executable-for-testing-12345"})
+	if got := commandErrorMessage("Not installed", missingErr); got != "Not installed" {
+		t.Errorf("commandErrorMessage() = %q, want configured missing message", got)
+	}
+
+	permissionErr := errors.New("permission denied")
+	if got := commandErrorMessage("Not installed", permissionErr); got != permissionErr.Error() {
+		t.Errorf("commandErrorMessage() = %q, want %q", got, permissionErr)
 	}
 }
 

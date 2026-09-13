@@ -14,6 +14,8 @@ import (
 func TestUISelectPage(t *testing.T) {
 	testApp := test.NewApp()
 	testWindow := testApp.NewWindow("Test")
+	originalContent := Content
+	t.Cleanup(func() { Content = originalContent })
 
 	Content.NavItems = []NavItem{
 		{"welcome", "Welcome"},
@@ -95,5 +97,10 @@ func TestResponsiveGrid(t *testing.T) {
 	grid.Resize(fyne.NewSize(100, 50))
 	if lbl1.Size().Height <= 0 {
 		t.Errorf("expected object height > 0, got %f", lbl1.Size().Height)
+	}
+
+	grid.Resize(minSize)
+	if bottom := lbl3.Position().Y + lbl3.Size().Height; bottom > minSize.Height {
+		t.Errorf("last object extends to %f beyond minimum height %f", bottom, minSize.Height)
 	}
 }

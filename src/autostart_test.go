@@ -47,6 +47,14 @@ func TestAutostartManagement(t *testing.T) {
 	}
 }
 
+// TestAutostartPathRejectsRelativeConfigHome verifies autostart files cannot escape through a relative XDG path.
+func TestAutostartPathRejectsRelativeConfigHome(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", "relative-config")
+	if path := autostartPath(); path != "" {
+		t.Errorf("autostartPath() = %q, want empty path", path)
+	}
+}
+
 // TestAutostartPathsUseInstallationPrefix verifies custom-prefix installations retain valid launcher paths.
 func TestAutostartPathsUseInstallationPrefix(t *testing.T) {
 	prefix := t.TempDir()

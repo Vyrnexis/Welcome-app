@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"path/filepath"
 
 	"fyne.io/fyne/v2"
@@ -39,7 +41,10 @@ func main() {
 	baseDir := findBaseDir()
 
 	if err := LoadContent(baseDir); err != nil {
-		fmt.Println("Warning: Content loaded with errors:", err)
+		if errors.Is(err, errBaseContent) {
+			log.Fatal(err)
+		}
+		log.Printf("warning: content loaded with errors: %v", err)
 	}
 
 	ui := &welcomeUI{
@@ -266,7 +271,8 @@ func (ui *welcomeUI) customisePage() fyne.CanvasObject {
 				return
 			}
 			if err := launchCommand(action.Command); err != nil {
-				dialog.ShowInformation(action.Title, fmt.Sprintf(Content.UI.NotInstalled, action.Command[0]), ui.window)
+				missing := fmt.Sprintf(Content.UI.NotInstalled, action.Command[0])
+				dialog.ShowInformation(action.Title, commandErrorMessage(missing, err), ui.window)
 			}
 		}))
 	}
@@ -346,7 +352,7 @@ func (ui *welcomeUI) openDesktopCommand(title string, commands map[string]Comman
 	}
 
 	if err := launchCommand(command.Command); err != nil {
-		dialog.ShowInformation(title, command.Missing, ui.window)
+		dialog.ShowInformation(title, commandErrorMessage(command.Missing, err), ui.window)
 	}
 }
 

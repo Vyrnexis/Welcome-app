@@ -11,13 +11,9 @@ const autostartFileName = "solus-welcome.desktop"
 
 // autostartPath determines the absolute file path for the user's desktop autostart entry.
 func autostartPath() string {
-	configHome := os.Getenv("XDG_CONFIG_HOME")
-	if configHome == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return ""
-		}
-		configHome = filepath.Join(home, ".config")
+	configHome, err := os.UserConfigDir()
+	if err != nil || !filepath.IsAbs(configHome) {
+		return ""
 	}
 	return filepath.Join(configHome, "autostart", autostartFileName)
 }

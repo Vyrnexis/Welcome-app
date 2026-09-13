@@ -48,8 +48,8 @@ sha256sum --check checksums.txt
 The archive contains a versioned top-level directory. Extract it, enter that directory, and run the installer:
 
 ```bash
-tar -xzf solus-welcome-v0.1.0-linux-x86_64.tar.gz
-cd solus-welcome-v0.1.0
+tar -xzf solus-welcome-v0.1.1-linux-x86_64.tar.gz
+cd solus-welcome-v0.1.1
 ./install.sh
 ```
 
@@ -120,7 +120,7 @@ Format, analyze, and test the project:
 ```bash
 gofmt -s -w .
 go vet ./...
-go test -v -race ./...
+go test -v -race -tags wayland ./...
 ./test/install_test.sh
 ```
 

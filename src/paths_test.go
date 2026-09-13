@@ -6,6 +6,9 @@ import "testing"
 func TestBaseDirCandidates(t *testing.T) {
 	candidates := baseDirCandidates("/workspace/welcome-app", "/opt/solus/bin/solus-welcome")
 	want := "/opt/solus/share/solus-welcome"
+	if candidates[0] != "/opt/solus/bin" || candidates[len(candidates)-2] != "/workspace/welcome-app" {
+		t.Fatalf("baseDirCandidates() = %v, executable paths must precede the working directory", candidates)
+	}
 	for _, candidate := range candidates {
 		if candidate == want {
 			return

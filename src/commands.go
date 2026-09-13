@@ -42,6 +42,14 @@ func launchCommand(command []string) error {
 	return nil
 }
 
+// commandErrorMessage uses a friendly configured message only when an executable cannot be found.
+func commandErrorMessage(missing string, err error) string {
+	if errors.Is(err, exec.ErrNotFound) && missing != "" {
+		return missing
+	}
+	return err.Error()
+}
+
 // launchTerminalCommand runs a shell command inside a supported terminal emulator.
 func launchTerminalCommand(title, shellCommand string) error {
 	command := terminalCommand(title, shellCommand)

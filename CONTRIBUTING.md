@@ -39,7 +39,7 @@ go run ./src
 **Running the Test Suite:**
 We use Fyne's headless test framework and standard Go testing.
 ```bash
-go test -v ./src/...
+go test -v -race -tags wayland ./...
 ```
 
 **Compiling a Release Binary:**

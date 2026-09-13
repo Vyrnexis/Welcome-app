@@ -16,7 +16,8 @@ func findBaseDir() string {
 		executable = value
 	}
 	for _, candidate := range baseDirCandidates(workingDir, executable) {
-		if fileExists(filepath.Join(candidate, "assets", "logo.svg")) {
+		if fileExists(filepath.Join(candidate, "assets", "config.toml")) &&
+			fileExists(filepath.Join(candidate, "assets", "logo.svg")) {
 			return candidate
 		}
 	}
@@ -27,9 +28,6 @@ func findBaseDir() string {
 // baseDirCandidates returns development and prefix-based asset locations in lookup order.
 func baseDirCandidates(workingDir, executable string) []string {
 	candidates := make([]string, 0, 5)
-	if workingDir != "" {
-		candidates = append(candidates, workingDir)
-	}
 	if executable != "" {
 		executableDir := filepath.Dir(executable)
 		prefixDir := filepath.Dir(executableDir)
@@ -39,6 +37,9 @@ func baseDirCandidates(workingDir, executable string) []string {
 			prefixDir,
 			filepath.Join(prefixDir, "share", "solus-welcome"),
 		)
+	}
+	if workingDir != "" {
+		candidates = append(candidates, workingDir)
 	}
 
 	candidates = append(candidates, "/usr/share/solus-welcome")

@@ -87,11 +87,7 @@ func (grid *responsiveGridLayout) MinSize(objects []fyne.CanvasObject) fyne.Size
 		cell = cell.Max(object.MinSize())
 	}
 
-	columns := min(grid.maxColumns, len(visible))
-	if columns < 1 {
-		columns = 1
-	}
-	rows := (len(visible) + columns - 1) / columns
+	rows := len(visible)
 	padding := theme.Padding()
 	return fyne.NewSize(
 		cell.Width,
