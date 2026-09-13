@@ -48,8 +48,8 @@ sha256sum --check checksums.txt
 The archive contains a versioned top-level directory. Extract it, enter that directory, and run the installer:
 
 ```bash
-tar -xzf solus-welcome-v0.1.1-linux-x86_64.tar.gz
-cd solus-welcome-v0.1.1
+tar -xzf solus-welcome-v0.1.2-linux-x86_64.tar.gz
+cd solus-welcome-v0.1.2
 ./install.sh
 ```
 

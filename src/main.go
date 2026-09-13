@@ -17,6 +17,8 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+const darkThemePreferenceKey = "darkTheme"
+
 type welcomeUI struct {
 	app                fyne.App
 	window             fyne.Window
@@ -26,6 +28,7 @@ type welcomeUI struct {
 	updateButton       *widget.Button
 	navButtons         map[string]*widget.Button
 	currentPage        string
+	darkTheme          bool
 	checkingUpdates    bool
 	cachedUpdateCount  int
 	hasCheckedUpdates  bool
@@ -35,7 +38,8 @@ type welcomeUI struct {
 // main initializes the application, sets the theme, and launches the main window.
 func main() {
 	a := app.NewWithID("us.getsol.SolusWelcome")
-	a.Settings().SetTheme(newSolusTheme(false))
+	darkTheme := a.Preferences().BoolWithFallback(darkThemePreferenceKey, false)
+	a.Settings().SetTheme(newSolusTheme(darkTheme))
 	w := a.NewWindow("Solus Welcome")
 
 	baseDir := findBaseDir()
@@ -54,6 +58,7 @@ func main() {
 		desktop:            detectDesktop(),
 		content:            container.NewStack(),
 		navButtons:         make(map[string]*widget.Button),
+		darkTheme:          darkTheme,
 		checkUpdatesOnLoad: true,
 	}
 
@@ -116,13 +121,20 @@ func (ui *welcomeUI) footer() fyne.CanvasObject {
 	startup.SetChecked(isAutostartEnabled())
 
 	closeButton := widget.NewButton(Content.UI.Close, ui.window.Close)
-	themeToggle := widget.NewCheck(Content.UI.DarkTheme, func(enabled bool) {
-		ui.app.Settings().SetTheme(newSolusTheme(enabled))
-		ui.refreshPage()
-	})
+	themeToggle := widget.NewCheck(Content.UI.DarkTheme, nil)
+	themeToggle.SetChecked(ui.darkTheme)
+	themeToggle.OnChanged = ui.setDarkTheme
 
 	footerControls := container.NewHBox(startup, themeToggle)
 	return container.NewPadded(container.NewBorder(nil, nil, footerControls, closeButton))
+}
+
+// setDarkTheme applies and persists the user's preferred application theme.
+func (ui *welcomeUI) setDarkTheme(enabled bool) {
+	ui.darkTheme = enabled
+	ui.app.Preferences().SetBool(darkThemePreferenceKey, enabled)
+	ui.app.Settings().SetTheme(newSolusTheme(enabled))
+	ui.refreshPage()
 }
 
 // selectPage switches the main content area to the specified page and updates button states.

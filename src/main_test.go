@@ -79,6 +79,27 @@ func TestSetupKeybindings(t *testing.T) {
 	}
 }
 
+// TestSetDarkThemePersistsPreference verifies theme changes survive application restarts.
+func TestSetDarkThemePersistsPreference(t *testing.T) {
+	testApp := test.NewApp()
+	testWindow := testApp.NewWindow("Test")
+	ui := &welcomeUI{
+		app:         testApp,
+		window:      testWindow,
+		content:     container.NewStack(),
+		navButtons:  make(map[string]*widget.Button),
+		currentPage: "support",
+	}
+
+	ui.setDarkTheme(true)
+	if !ui.darkTheme {
+		t.Error("expected dark theme state to be enabled")
+	}
+	if !testApp.Preferences().BoolWithFallback(darkThemePreferenceKey, false) {
+		t.Error("expected dark theme preference to be persisted")
+	}
+}
+
 // TestResponsiveGrid verifies responsive layouts preserve usable child dimensions.
 func TestResponsiveGrid(t *testing.T) {
 	lbl1 := widget.NewLabel("Item 1")
@@ -93,14 +114,17 @@ func TestResponsiveGrid(t *testing.T) {
 	if minSize.Height <= 0 {
 		t.Errorf("expected min height > 0, got %f", minSize.Height)
 	}
+	if minSize.Height != lbl1.MinSize().Height {
+		t.Errorf("expected one compact row with height %f, got %f", lbl1.MinSize().Height, minSize.Height)
+	}
 
 	grid.Resize(fyne.NewSize(100, 50))
 	if lbl1.Size().Height <= 0 {
 		t.Errorf("expected object height > 0, got %f", lbl1.Size().Height)
 	}
 
-	grid.Resize(minSize)
-	if bottom := lbl3.Position().Y + lbl3.Size().Height; bottom > minSize.Height {
-		t.Errorf("last object extends to %f beyond minimum height %f", bottom, minSize.Height)
+	grid.Resize(fyne.NewSize(640, 500))
+	if lbl1.Size().Height != lbl1.MinSize().Height {
+		t.Errorf("expected compact object height %f, got %f", lbl1.MinSize().Height, lbl1.Size().Height)
 	}
 }

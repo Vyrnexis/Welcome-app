@@ -70,7 +70,7 @@ run_install_test() {
 
 # run_binary_bundle_test verifies source-free release packages install without prompting.
 run_binary_bundle_test() {
-  local bundle_dir="$TEST_ROOT/solus-welcome-v0.1.1"
+  local bundle_dir="$TEST_ROOT/solus-welcome-v0.1.2"
   local test_destdir="$TEST_ROOT/bundle-install"
   local install_root="$test_destdir/usr"
   mkdir -p "$bundle_dir/bin" "$test_destdir"
