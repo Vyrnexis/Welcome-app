@@ -17,10 +17,13 @@ import (
 )
 
 type welcomeUI struct {
-	app         fyne.App
-	window      fyne.Window
-	desktop     DesktopInfo
-	host        hostPaths
+	app      fyne.App
+	window   fyne.Window
+	desktop  DesktopInfo
+	host     hostPaths
+	progress progress
+	// rebuild redraws the current page; a field because calling render from page builders would make the pages registry initialise itself.
+	rebuild     func()
 	content     AppContent
 	pageArea    *fyne.Container
 	navButtons  map[string]*widget.Button
@@ -61,6 +64,7 @@ func newWelcomeUI(a fyne.App, w fyne.Window, content AppContent, desktop Desktop
 		window:     w,
 		desktop:    desktop,
 		host:       defaultHostPaths,
+		progress:   progress{a.Preferences()},
 		content:    content,
 		pageArea:   container.NewStack(),
 		navButtons: make(map[string]*widget.Button),
@@ -72,6 +76,7 @@ func newWelcomeUI(a fyne.App, w fyne.Window, content AppContent, desktop Desktop
 	ui.updates.onError = func(err error) {
 		dialog.ShowInformation(lang.L(content.UI.CheckForUpdates), ui.updates.errorText(err), w)
 	}
+	ui.rebuild = ui.render
 	a.Settings().SetTheme(newSolusTheme(ui.themeMode))
 	return ui
 }

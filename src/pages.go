@@ -43,15 +43,24 @@ func (ui *welcomeUI) welcomePage() fyne.CanvasObject {
 	heroText := container.NewVBox(title, subtitle, layout.NewSpacer())
 	hero := responsiveGrid(360, 2, heroText, ui.systemCard())
 
-	cards := make([]fyne.CanvasObject, 0, len(ui.content.WelcomeCards)+1)
-	for _, card := range ui.welcomeCards() {
+	welcomeCards := ui.welcomeCards()
+	cards := make([]fyne.CanvasObject, 0, len(welcomeCards))
+	for _, card := range welcomeCards {
 		cards = append(cards, ui.welcomeCard(card))
 	}
+
+	resetButton := widget.NewButton(lang.L(ui.content.UI.ResetProgress), func() {
+		ui.progress.reset()
+		ui.rebuild()
+	})
+	resetButton.Importance = widget.LowImportance
+	progressRow := container.NewHBox(widget.NewLabel(progressText(ui.progress.count(welcomeCards), len(welcomeCards))), resetButton)
 
 	page := container.NewVBox(
 		hero,
 		widget.NewSeparator(),
 		newHeading(lang.L(ui.content.UI.GettingStarted), 24),
+		progressRow,
 		responsiveGrid(260, 3, cards...),
 	)
 	return container.NewPadded(container.NewVScroll(maxWidth(page, 1180)))
@@ -115,8 +124,15 @@ func (ui *welcomeUI) desktopName() string {
 
 func (ui *welcomeUI) welcomeCard(card WelcomeCard) fyne.CanvasObject {
 	icon := actions[card.Action].icon()
+	headerIcon := icon
+	if ui.progress.done(card.Action) {
+		headerIcon = theme.ConfirmIcon()
+	}
 	button := widget.NewButtonWithIcon(lang.L(card.Button), icon, func() {
-		actions[card.Action].run(ui, card)
+		if actions[card.Action].run(ui, card) {
+			ui.progress.mark(card.Action)
+			ui.rebuild()
+		}
 	})
 	button.Importance = widget.HighImportance
 
@@ -124,7 +140,7 @@ func (ui *welcomeUI) welcomeCard(card WelcomeCard) fyne.CanvasObject {
 	body.Wrapping = fyne.TextWrapWord
 
 	return widget.NewCard("", "", container.NewVBox(
-		container.NewHBox(widget.NewIcon(icon), newHeading(lang.L(card.Title), 18)),
+		container.NewHBox(widget.NewIcon(headerIcon), newHeading(lang.L(card.Title), 18)),
 		widget.NewSeparator(),
 		body,
 		layout.NewSpacer(),

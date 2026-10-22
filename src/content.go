@@ -94,6 +94,7 @@ type UIStrings struct {
 	PressEnterToClose    string `toml:"PressEnterToClose"`
 	CopySystemInfo       string `toml:"CopySystemInfo"`
 	Copied               string `toml:"Copied"`
+	ResetProgress        string `toml:"ResetProgress"`
 }
 
 type AppContent struct {

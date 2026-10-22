@@ -15,6 +15,9 @@ const updatesPluralKey = "updates_available"
 // updatesPluralFallback is the English "other" form used when no catalogue provides the message.
 const updatesPluralFallback = "{{.Count}} updates available"
 
+// pluralKeys are the catalogue keys that hold plural forms instead of plain strings.
+var pluralKeys = []string{updatesPluralKey, progressPluralKey}
+
 // Catalogues are registered at init so every test and the app see the same messages.
 func init() {
 	if err := lang.AddTranslationsFS(assets.FS, "translations"); err != nil {
@@ -28,7 +31,7 @@ func updatesAvailable(count int) string {
 }
 
 // translatableMessages returns every configured string that is passed through lang.L, which is also the set
-// of valid translation keys together with updatesPluralKey.
+// of valid translation keys together with pluralKeys.
 func translatableMessages(content AppContent) map[string]bool {
 	messages := make(map[string]bool)
 	collectMessages(reflect.ValueOf(content), messages)
