@@ -74,7 +74,7 @@ Missing = "Software centre is not installed."
 
 # Used when the desktop is not recognised.
 [SoftwareCommands.default]
-Command = ["plasma-discover"]
+Command = ["gnome-software"]
 Missing = "No supported software centre was found."
 
 

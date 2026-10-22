@@ -228,7 +228,7 @@ func TestQuoteDesktopArg(t *testing.T) {
 	}{
 		{"/usr/bin/simple", "/usr/bin/simple"},
 		{"/path with/spaces", `"/path with/spaces"`},
-		{`/path"with"quotes`, `"/path\"with\"quotes"`},
+		{`/path"with"quotes`, `"/path\\"with\\"quotes"`},
 		{"/path$with`special", `"/path\\$with\\` + "`" + `special"`},
 		{`/back\slash`, `"/back\\\\slash"`},
 		{"/it's", `"/it's"`},

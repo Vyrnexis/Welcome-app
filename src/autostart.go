@@ -177,7 +177,7 @@ func enabledEntryContent(executable string) (string, error) {
 }
 
 // quoteDesktopArg quotes an Exec argument per the desktop entry specification. Backslashes are written as four
-// characters and $ or ` as \\ plus the character because the string-value escape layer is applied before the
+// characters and ", $ or ` as \\ plus the character because the string-value escape layer is applied before the
 // quoting layer; % is doubled so field codes are never expanded.
 func quoteDesktopArg(value string) (string, error) {
 	if strings.ContainsAny(value, "\n\r\x00") {
@@ -190,7 +190,7 @@ func quoteDesktopArg(value string) (string, error) {
 
 	escaped := strings.NewReplacer(
 		`\`, `\\\\`,
-		`"`, `\"`,
+		`"`, `\\"`,
 		"$", `\\$`,
 		"`", "\\\\`",
 	).Replace(value)
