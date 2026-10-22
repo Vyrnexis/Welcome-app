@@ -47,6 +47,15 @@ type DesktopAction struct {
 	Command []string `toml:"Command" i18n:"-"`
 }
 
+// DriverHelp configures the NVIDIA driver card: Command is tried first and URL is the fallback.
+type DriverHelp struct {
+	Title   string   `toml:"Title"`
+	Body    string   `toml:"Body"`
+	Button  string   `toml:"Button"`
+	Command []string `toml:"Command" i18n:"-"`
+	URL     string   `toml:"URL" i18n:"-"`
+}
+
 type NavItem struct {
 	Key   string `toml:"Key" i18n:"-"`
 	Label string `toml:"Label"`
@@ -83,6 +92,9 @@ type UIStrings struct {
 	NoTerminal           string `toml:"NoTerminal"`
 	NoAutostartDir       string `toml:"NoAutostartDir"`
 	PressEnterToClose    string `toml:"PressEnterToClose"`
+	CopySystemInfo       string `toml:"CopySystemInfo"`
+	Copied               string `toml:"Copied"`
+	ResetProgress        string `toml:"ResetProgress"`
 }
 
 type AppContent struct {
@@ -94,6 +106,7 @@ type AppContent struct {
 	DesktopActions         map[string][]DesktopAction `toml:"DesktopActions"`
 	SupportLinks           []LinkCard                 `toml:"SupportLinks"`
 	ContributeLinks        []LinkCard                 `toml:"ContributeLinks"`
+	Drivers                DriverHelp                 `toml:"Drivers"`
 	UI                     UIStrings                  `toml:"UI"`
 }
 
@@ -195,7 +208,7 @@ func validateContent(content AppContent) error {
 	seenActions := make(map[string]bool, len(content.WelcomeCards))
 	for _, card := range content.WelcomeCards {
 		spec, ok := actions[card.Action]
-		if !ok || strings.TrimSpace(card.Title) == "" || strings.TrimSpace(card.Button) == "" {
+		if !ok || spec.internal || strings.TrimSpace(card.Title) == "" || strings.TrimSpace(card.Button) == "" {
 			return fmt.Errorf("invalid welcome action %q", card.Action)
 		}
 		if spec.needsURL && !validURL(card.URL) {
@@ -235,6 +248,15 @@ func validateContent(content AppContent) error {
 				return fmt.Errorf("invalid link URL %q", link.URL)
 			}
 		}
+	}
+
+	drivers := content.Drivers
+	if strings.TrimSpace(drivers.Title) == "" || strings.TrimSpace(drivers.Body) == "" || strings.TrimSpace(drivers.Button) == "" ||
+		len(drivers.Command) == 0 || strings.TrimSpace(drivers.Command[0]) == "" {
+		return errors.New("invalid driver helper configuration")
+	}
+	if !validURL(drivers.URL) {
+		return fmt.Errorf("invalid driver helper URL %q", drivers.URL)
 	}
 
 	ui := reflect.ValueOf(content.UI)

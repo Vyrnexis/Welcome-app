@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"log"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -16,9 +17,13 @@ import (
 )
 
 type welcomeUI struct {
-	app         fyne.App
-	window      fyne.Window
-	desktop     DesktopInfo
+	app      fyne.App
+	window   fyne.Window
+	desktop  DesktopInfo
+	host     hostPaths
+	progress progress
+	// rebuild redraws the current page; a field because calling render from page builders would make the pages registry initialise itself.
+	rebuild     func()
 	content     AppContent
 	pageArea    *fyne.Container
 	navButtons  map[string]*widget.Button
@@ -26,6 +31,7 @@ type welcomeUI struct {
 	updates     *updateChecker
 	themeMode   themeMode
 	quit        func()
+	later       func(time.Duration, func()) // runs a function after a delay, off the UI goroutine
 }
 
 func main() {
@@ -57,16 +63,20 @@ func newWelcomeUI(a fyne.App, w fyne.Window, content AppContent, desktop Desktop
 		app:        a,
 		window:     w,
 		desktop:    desktop,
+		host:       defaultHostPaths,
+		progress:   progress{a.Preferences()},
 		content:    content,
 		pageArea:   container.NewStack(),
 		navButtons: make(map[string]*widget.Button),
 		updates:    newUpdateChecker(content.UI),
 		themeMode:  loadThemeMode(a.Preferences()),
 		quit:       a.Quit,
+		later:      func(d time.Duration, f func()) { time.AfterFunc(d, f) },
 	}
 	ui.updates.onError = func(err error) {
 		dialog.ShowInformation(lang.L(content.UI.CheckForUpdates), ui.updates.errorText(err), w)
 	}
+	ui.rebuild = ui.render
 	a.Settings().SetTheme(newSolusTheme(ui.themeMode))
 	return ui
 }

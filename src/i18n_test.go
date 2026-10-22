@@ -39,10 +39,10 @@ func TestTranslationKeysAreCurrent(t *testing.T) {
 	messages := translatableMessages(testContent(t))
 	for file, catalogue := range loadCatalogues(t) {
 		for key, raw := range catalogue {
-			if key != updatesPluralKey && !messages[key] {
+			if !slices.Contains(pluralKeys, key) && !messages[key] {
 				t.Errorf("%s: stale key %q does not match any configured string", file, key)
 			}
-			if key == updatesPluralKey {
+			if slices.Contains(pluralKeys, key) {
 				var forms map[string]string
 				if err := json.Unmarshal(raw, &forms); err != nil || forms["other"] == "" || !strings.Contains(forms["other"], "{{.Count}}") {
 					t.Errorf("%s: %q needs plural forms containing {{.Count}}: %v", file, key, err)

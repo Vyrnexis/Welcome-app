@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"fyne.io/fyne/v2"
@@ -25,6 +27,9 @@ func newTestUI(t *testing.T, navKeys ...string) *welcomeUI {
 	ui.updates.count = func() (int, error) { return 0, nil }
 	ui.updates.do = func(f func()) { f() }
 	ui.updates.spawn = func(f func()) { f() }
+	// Fixture paths keep the tests independent of the machine's hardware and distribution.
+	root := t.TempDir()
+	ui.host = hostPaths{osRelease: filepath.Join(root, "os-release"), cpuInfo: filepath.Join(root, "cpuinfo"), sysfs: filepath.Join(root, "sys")}
 	ui.quit = func() { t.Error("quit called unexpectedly") }
 	return ui
 }
@@ -149,5 +154,40 @@ func TestAllPagesBuild(t *testing.T) {
 		if spec.build(ui) == nil {
 			t.Errorf("page %q built nothing", key)
 		}
+	}
+}
+
+// TestSystemCardReleaseName verifies the release heading comes from os-release with a configured fallback.
+func TestSystemCardReleaseName(t *testing.T) {
+	ui := newTestUI(t)
+	ui.host.osRelease = filepath.Join(t.TempDir(), "os-release")
+	if got := ui.releaseName(); got != "Solus Linux" {
+		t.Errorf("releaseName() without file = %q, want the configured name", got)
+	}
+	writeFile(t, ui.host.osRelease, "PRETTY_NAME=\"Solus 4.7 Endurance\"\n")
+	if got := ui.releaseName(); got != "Solus 4.7 Endurance" {
+		t.Errorf("releaseName() = %q", got)
+	}
+}
+
+// TestNvidiaCardFirst verifies the driver card leads the grid only while the proprietary driver is missing.
+func TestNvidiaCardFirst(t *testing.T) {
+	ui := newTestUI(t)
+	configured := len(ui.content.WelcomeCards)
+	if got := ui.welcomeCards(); len(got) != configured {
+		t.Fatalf("without NVIDIA hardware: %d cards, want %d", len(got), configured)
+	}
+
+	addPCIDevice(t, ui.host.sysfs, "0000:01:00.0", "0x030000", "0x10de", "nouveau")
+	cards := ui.welcomeCards()
+	if len(cards) != configured+1 || cards[0].Action != "nvidia" || cards[0].Title != ui.content.Drivers.Title {
+		t.Fatalf("with NVIDIA hardware: cards = %v", cards)
+	}
+
+	if err := os.MkdirAll(filepath.Join(ui.host.sysfs, "module", "nvidia"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := ui.welcomeCards(); len(got) != configured {
+		t.Errorf("with the driver loaded: %d cards, want %d", len(got), configured)
 	}
 }

@@ -77,11 +77,11 @@ func kernelVersion() string {
 	return ""
 }
 
-// memoryLabel reads total physical RAM from /proc/meminfo and formats it into GiB.
-func memoryLabel(ui UIStrings) string {
+// memoryKiB reads total physical RAM from /proc/meminfo, or 0 when it cannot be determined.
+func memoryKiB() int64 {
 	data, err := os.ReadFile("/proc/meminfo")
 	if err != nil {
-		return ""
+		return 0
 	}
 	for _, line := range strings.Split(string(data), "\n") {
 		if strings.HasPrefix(line, "MemTotal:") {
@@ -89,10 +89,18 @@ func memoryLabel(ui UIStrings) string {
 			if len(fields) >= 2 {
 				var kb int64
 				if _, err := fmt.Sscanf(fields[1], "%d", &kb); err == nil && kb > 0 {
-					return fmt.Sprintf(lang.L(ui.MemoryFormat), float64(kb)/1024/1024)
+					return kb
 				}
 			}
 		}
+	}
+	return 0
+}
+
+// memoryLabel formats total physical RAM into GiB.
+func memoryLabel(ui UIStrings) string {
+	if kb := memoryKiB(); kb > 0 {
+		return fmt.Sprintf(lang.L(ui.MemoryFormat), float64(kb)/1024/1024)
 	}
 	return ""
 }

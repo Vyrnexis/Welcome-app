@@ -14,8 +14,12 @@ The application is written in Go with the [Fyne](https://fyne.io/) GUI toolkit a
 
 - Detects the active Budgie, GNOME, KDE Plasma, or Xfce desktop session.
 - Displays the desktop edition, architecture, Linux kernel, and installed memory.
+- Shows the installed Solus release (for example "Solus 4.7 Endurance") from `/etc/os-release`.
+- Copies a plain-text system report (OS, desktop, kernel, CPU, memory, GPU and driver) to the clipboard for support requests.
 - Checks for available `eopkg` upgrades without blocking the interface.
 - Opens the appropriate software centre, appearance tools, and system settings for the active desktop.
+- Offers an NVIDIA driver helper when an NVIDIA GPU is present without the proprietary driver.
+- Tracks getting-started progress with checkmarks on completed cards and a reset button.
 - Provides direct links to Solus documentation, support channels, contribution guides, and donations.
 - Shown on first login via system autostart, with the option for users to opt out.
 - Theme follows system settings with manual Light and Dark mode overrides.

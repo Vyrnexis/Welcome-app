@@ -6,7 +6,7 @@ Solus Welcome uses Fyne's built-in i18n. Each language is one JSON catalogue in 
 
 The message ID is the **English text** exactly as written in [`../config.toml`](../config.toml) (card titles and bodies, button labels, navigation labels, `Missing` messages, and the `[UI]` strings). Commands, URLs, action names, and desktop keys are never message IDs, so you never copy or translate them.
 
-There is one exception: the number of available updates is a plural message with the stable ID `updates_available`.
+There are two exceptions: the number of available updates (`updates_available`) and the getting-started progress (`getting_started_progress`) are plural messages with stable IDs.
 
 ## Add a language
 
@@ -26,7 +26,7 @@ There is one exception: the number of available updates is a plural message with
 
 ## Plurals
 
-The update count uses the CLDR plural categories of your language. Provide every category your language uses (for example `one` and `other` for German, `one`, `few`, `many`, and `other` for Polish) and put `{{.Count}}` where the number belongs:
+The update count and the progress summary (`{{.Count}} of {{.Total}} done`) use the CLDR plural categories of your language. Provide every category your language uses (for example `one` and `other` for German, `one`, `few`, `many`, and `other` for Polish) and put `{{.Count}}` where the number belongs:
 
 ```json
 "updates_available": {

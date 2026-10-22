@@ -19,8 +19,18 @@
   "System is up to date": "System ist auf dem neuesten Stand",
   "%s is not installed on this system.": "%s ist auf diesem System nicht installiert.",
   "Update now": "Jetzt aktualisieren",
+  "Copy system info": "Systeminfo kopieren",
+  "Copied": "Kopiert",
+  "Reset": "Zurücksetzen",
+  "NVIDIA graphics detected": "NVIDIA-Grafik erkannt",
+  "Install driver": "Treiber installieren",
+  "What's new in Solus": "Neues in Solus",
   "updates_available": {
     "one": "{{.Count}} Update verfügbar",
     "other": "{{.Count}} Updates verfügbar"
+  },
+  "getting_started_progress": {
+    "one": "{{.Count}} von {{.Total}} erledigt",
+    "other": "{{.Count}} von {{.Total}} erledigt"
   }
 }

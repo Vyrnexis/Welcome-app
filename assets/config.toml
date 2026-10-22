@@ -43,6 +43,13 @@ Action = "learn"
 URL = "https://help.getsol.us/docs/user/intro"
 
 [[WelcomeCards]]
+Title = "What's new in Solus"
+Body = "Read the latest release notes, news, and announcements from the Solus team."
+Button = "Read the blog"
+Action = "whatsnew"
+URL = "https://getsol.us/blog/"
+
+[[WelcomeCards]]
 Title = "System Settings"
 Body = "Configure displays, printers, Bluetooth, audio, power, and more."
 Button = "Open Settings"
@@ -273,6 +280,15 @@ Title = "Donations"
 Body = "Support project infrastructure and ongoing work."
 URL = "https://getsol.us/contribute/donations"
 
+# Shown on the Welcome page when an NVIDIA GPU is present but the proprietary driver is not loaded.
+# Command is launched if installed; otherwise URL is opened.
+[Drivers]
+Title = "NVIDIA graphics detected"
+Body = "The proprietary NVIDIA driver can improve graphics performance and enable features such as CUDA and better gaming support."
+Button = "Install driver"
+Command = ["doflicky-ui"]
+URL = "https://help.getsol.us/docs/user/hardware/nvidia-gpu-drivers/"
+
 [UI]
 WindowTitle = "Solus Welcome"
 SidebarTitle = "Solus"
@@ -304,3 +320,6 @@ LearnMoreButton = "Learn more"
 NoTerminal = "No supported terminal emulator was found."
 NoAutostartDir = "Could not determine the autostart directory."
 PressEnterToClose = "Press Enter to close..."
+CopySystemInfo = "Copy system info"
+Copied = "Copied"
+ResetProgress = "Reset"
