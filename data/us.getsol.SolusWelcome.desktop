@@ -5,6 +5,6 @@ Comment=Welcome and first-run setup for Solus
 Exec=solus-welcome
 Icon=us.getsol.SolusWelcome
 Terminal=false
-Categories=GTK;Settings;System;
+Categories=GTK;Settings;
 Keywords=welcome;setup;getting started;solus;
 StartupNotify=true

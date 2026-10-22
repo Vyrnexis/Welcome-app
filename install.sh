@@ -62,6 +62,7 @@ else
   fi
 fi
 
+# needs_privilege reports whether writing target requires sudo for the current user.
 needs_privilege() {
   local target="$1"
   if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
@@ -81,6 +82,7 @@ needs_privilege() {
   return 1
 }
 
+# run_privileged runs a command with sudo only when target is not writable.
 run_privileged() {
   local target="$1"
   shift
@@ -128,9 +130,6 @@ case "$mode" in
     fi
     echo "Compiling from source..."
     mkdir -p "$BIN_DIR"
-    if ! command -v go >/dev/null 2>&1 && [[ -x "/usr/lib/go/bin/go" ]]; then
-      export PATH="/usr/lib/go/bin:$PATH"
-    fi
     (cd "$ROOT_DIR" && go build -trimpath -ldflags="-s -w" -o "$APP_BIN" ./src)
     ;;
   prebuilt)
@@ -184,9 +183,9 @@ run_privileged "$INSTALL_ROOT/share/icons/hicolor/scalable/apps/us.getsol.SolusW
 if [[ -z "$DESTDIR" ]]; then
   if command -v update-desktop-database >/dev/null 2>&1; then
     if needs_privilege "$PREFIX/share/applications"; then
-      sudo update-desktop-database -q >/dev/null 2>&1 || true
+      sudo update-desktop-database -q "$PREFIX/share/applications" >/dev/null 2>&1 || true
     else
-      update-desktop-database -q >/dev/null 2>&1 || true
+      update-desktop-database -q "$PREFIX/share/applications" >/dev/null 2>&1 || true
     fi
   fi
   if command -v gtk-update-icon-cache >/dev/null 2>&1; then
