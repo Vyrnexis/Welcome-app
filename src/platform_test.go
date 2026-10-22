@@ -38,7 +38,7 @@ func TestDetectDesktop(t *testing.T) {
 
 // TestArchitectureLabel verifies non-empty architecture string output.
 func TestArchitectureLabel(t *testing.T) {
-	label := architectureLabel()
+	label := architectureLabel(testContent(t).UI)
 	if label == "" {
 		t.Error("architecture label should not be empty")
 	}
@@ -46,11 +46,12 @@ func TestArchitectureLabel(t *testing.T) {
 
 // TestSystemDetailsSummary verifies that the diagnostic details string contains the architecture.
 func TestSystemDetailsSummary(t *testing.T) {
-	summary := systemDetailsSummary()
+	ui := testContent(t).UI
+	summary := systemDetailsSummary(ui)
 	if summary == "" {
 		t.Error("system details summary should not be empty")
 	}
-	arch := architectureLabel()
+	arch := architectureLabel(ui)
 	if !strings.Contains(summary, arch) {
 		t.Errorf("system details summary %q does not contain architecture %q", summary, arch)
 	}

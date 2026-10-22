@@ -20,7 +20,7 @@ Label = "Contribute"
 [[WelcomeCards]]
 Title = "Update your system"
 Body = "Keep your system secure and up to date with the latest packages."
-Button = "Check for Updates"
+Button = "Update now"
 Action = "updates"
 
 [[WelcomeCards]]
@@ -40,6 +40,7 @@ Title = "Learn Solus"
 Body = "Find help, documentation, and community support resources."
 Button = "Visit Help Centre"
 Action = "learn"
+URL = "https://help.getsol.us/docs/user/intro"
 
 [[WelcomeCards]]
 Title = "System Settings"
@@ -52,6 +53,7 @@ Title = "Donate to Solus"
 Body = "Support Solus infrastructure, hosting, development, and community work."
 Button = "Donate"
 Action = "donate"
+URL = "https://opencollective.com/getsolus"
 
 
 [SoftwareCommands.gnome]
@@ -59,8 +61,8 @@ Command = ["gnome-software"]
 Missing = "GNOME Software is not installed."
 
 [SoftwareCommands.budgie]
-Command = ["plasma-discover"]
-Missing = "Discover is not installed."
+Command = ["gnome-software"]
+Missing = "GNOME Software is not installed."
 
 [SoftwareCommands.kde]
 Command = ["plasma-discover"]
@@ -69,6 +71,11 @@ Missing = "Discover is not installed."
 [SoftwareCommands.xfce]
 Command = ["gnome-software"]
 Missing = "Software centre is not installed."
+
+# Used when the desktop is not recognised.
+[SoftwareCommands.default]
+Command = ["gnome-software"]
+Missing = "No supported software centre was found."
 
 
 [CustomiseCommands.budgie]
@@ -87,6 +94,10 @@ Missing = "GNOME appearance settings are not installed."
 Command = ["xfce4-appearance-settings"]
 Missing = "Xfce Appearance settings are not installed."
 
+[CustomiseCommands.default]
+Command = ["budgie-desktop-settings"]
+Missing = "No supported desktop settings application was found."
+
 
 [SystemSettingsCommands.budgie]
 Command = ["budgie-control-center"]
@@ -97,12 +108,16 @@ Command = ["systemsettings"]
 Missing = "KDE System Settings is not installed."
 
 [SystemSettingsCommands.gnome]
-Command = ["gnome-control-center", "display"]
-Missing = "GNOME display settings are not installed."
+Command = ["gnome-control-center"]
+Missing = "GNOME Settings is not installed."
 
 [SystemSettingsCommands.xfce]
 Command = ["xfce4-settings-manager"]
 Missing = "Xfce Settings Manager is not installed."
+
+[SystemSettingsCommands.default]
+Command = ["budgie-control-center"]
+Missing = "No supported settings tool was found."
 
 
 # Desktop-specific actions for the Customise page
@@ -259,22 +274,33 @@ Body = "Support project infrastructure and ongoing work."
 URL = "https://getsol.us/contribute/donations"
 
 [UI]
+WindowTitle = "Solus Welcome"
+SidebarTitle = "Solus"
 Tagline = "The personal OS for personal computers"
 ShowOnStartup = "Show this welcome screen on startup"
 Close = "Close"
-DarkTheme = "Dark theme"
+ThemeLabel = "Theme"
+ThemeSystem = "System"
+ThemeLight = "Light"
+ThemeDark = "Dark"
 WelcomeTitle = "Welcome to Solus"
 WelcomeSubtitle = "Thank you for choosing Solus. This welcome app will help you get set up, learn about your system, and find useful resources."
 GettingStarted = "Getting started"
 SolusLinux = "Solus Linux"
 EditionSuffix = " Edition"
+UnknownDesktop = "Unknown desktop"
+Bits64 = "64-bit"
+MemoryFormat = "%.1f GiB RAM"
 CheckForUpdates = "Check for updates"
 CheckingUpdates = "Checking updates..."
 UnableToCheckUpdates = "Unable to check updates"
+UpdateTimedOut = "The update check timed out."
+UpdateCheckFailed = "Unable to check for updates."
 SystemUpToDate = "System is up to date"
-OneUpdateAvailable = "1 update available"
-UpdatesAvailable = "%d updates available"
 NoDesktopSettings = "Desktop-specific settings were not detected."
 OpenButton = "Open"
 NotInstalled = "%s is not installed on this system."
 LearnMoreButton = "Learn more"
+NoTerminal = "No supported terminal emulator was found."
+NoAutostartDir = "Could not determine the autostart directory."
+PressEnterToClose = "Press Enter to close..."

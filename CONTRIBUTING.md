@@ -13,10 +13,10 @@ First, thank you for taking the time to contribute! This document provides guide
 Please ensure your interactions in issues and pull requests remain respectful and constructive, in line with the broader Solus community standards.
 
 ## Translating the App (i18n)
-We highly encourage community translations! You do **not** need to be a Go programmer to translate this app. 
-Our translations are managed entirely through simple TOML configuration files. 
+We highly encourage community translations! You do **not** need to be a Go programmer to translate this app.
+Translations are plain JSON catalogues using Fyne's built-in i18n, embedded into the binary at build time. The message ID is the English text from `assets/config.toml`, so you never copy commands or URLs.
 
-Please see the dedicated **[Locales Guide](assets/locales/README.md)** for 4 easy steps on how to add your language.
+Please see the **[Translation Guide](assets/translations/README.md)** for how to add your language.
 
 ## Setting Up Your Development Environment
 
@@ -35,17 +35,18 @@ Once your dependencies are installed, you can build and test the application dir
 ```bash
 go run ./src
 ```
+Assets and translations are embedded in the binary. To try a different configuration, place it at `/etc/solus-welcome/config.toml`; it replaces the embedded one if it is valid.
 
 **Running the Test Suite:**
 We use Fyne's headless test framework and standard Go testing.
 ```bash
-go test -v -race -tags wayland ./...
+go test -v -race ./...
 ```
 
 **Compiling a Release Binary:**
 To build a fully stripped and optimized release binary:
 ```bash
-go build -tags wayland -ldflags="-s -w" -trimpath -o bin/solus-welcome ./src
+go build -ldflags="-s -w" -trimpath -o bin/solus-welcome ./src
 ```
 
 **Compressing with UPX:**
@@ -60,5 +61,6 @@ upx --best --lzma bin/solus-welcome-upx-compressed
 We follow standard idiomatic Go conventions:
 - **Formatting:** Always run `gofmt -s -w .` before committing. Our CI pipeline will fail if code is improperly formatted.
 - **Linting:** We encourage running `go vet ./...` locally.
-- **Documentation:** Every exported and unexported function MUST have a clean 1-to-2 line GoDoc comment directly above it explaining precisely what it does. Avoid cluttering the internal function bodies with obvious inline comments.
+- **Comments:** Explain *why*, not what. Skip comments that only restate a function's name; document non-obvious behaviour, constraints, and trade-offs.
+- **Registries:** Pages (`pages.go`) and welcome-card actions (`actions.go`) are registered in one map each; configuration validation derives its known keys from them.
 - **Commits:** We follow Conventional Commits (e.g., `feat: add new button`, `fix: resolve crash on startup`, `docs: update readme`).
