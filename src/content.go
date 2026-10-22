@@ -83,6 +83,8 @@ type UIStrings struct {
 	NoTerminal           string `toml:"NoTerminal"`
 	NoAutostartDir       string `toml:"NoAutostartDir"`
 	PressEnterToClose    string `toml:"PressEnterToClose"`
+	CopySystemInfo       string `toml:"CopySystemInfo"`
+	Copied               string `toml:"Copied"`
 }
 
 type AppContent struct {

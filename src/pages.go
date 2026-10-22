@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -11,6 +12,9 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
+
+// copiedFeedback is how long the copy button shows its confirmation.
+const copiedFeedback = 2 * time.Second
 
 type pageSpec struct {
 	icon  func() fyne.Resource
@@ -65,7 +69,7 @@ func (ui *welcomeUI) systemCard() fyne.CanvasObject {
 	ui.updates.Bind(updateButton)
 	ui.updates.Start(false, false)
 
-	details := container.NewVBox(name, edition, sysDetails, layout.NewSpacer(), updateButton)
+	details := container.NewVBox(name, edition, sysDetails, layout.NewSpacer(), updateButton, ui.copyInfoButton())
 	return widget.NewCard("", "", container.NewHBox(desktopIcon(ui.desktop), details))
 }
 
@@ -75,6 +79,21 @@ func (ui *welcomeUI) releaseName() string {
 		return name
 	}
 	return lang.L(ui.content.UI.SolusLinux)
+}
+
+// copyInfoButton copies the system report and briefly confirms it. The timer fires on another goroutine and may
+// outlive the page, so it only touches the button it was created with, through fyne.Do.
+func (ui *welcomeUI) copyInfoButton() *widget.Button {
+	label := lang.L(ui.content.UI.CopySystemInfo)
+	button := widget.NewButtonWithIcon(label, theme.ContentCopyIcon(), nil)
+	button.OnTapped = func() {
+		ui.app.Clipboard().SetContent(ui.systemReport())
+		button.SetText(lang.L(ui.content.UI.Copied))
+		ui.later(copiedFeedback, func() {
+			fyne.Do(func() { button.SetText(label) })
+		})
+	}
+	return button
 }
 
 func (ui *welcomeUI) desktopName() string {

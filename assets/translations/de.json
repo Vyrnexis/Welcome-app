@@ -19,6 +19,9 @@
   "System is up to date": "System ist auf dem neuesten Stand",
   "%s is not installed on this system.": "%s ist auf diesem System nicht installiert.",
   "Update now": "Jetzt aktualisieren",
+  "Copy system info": "Systeminfo kopieren",
+  "Copied": "Kopiert",
+  "What's new in Solus": "Neues in Solus",
   "updates_available": {
     "one": "{{.Count}} Update verfügbar",
     "other": "{{.Count}} Updates verfügbar"

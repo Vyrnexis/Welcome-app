@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"log"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -27,6 +28,7 @@ type welcomeUI struct {
 	updates     *updateChecker
 	themeMode   themeMode
 	quit        func()
+	later       func(time.Duration, func()) // runs a function after a delay, off the UI goroutine
 }
 
 func main() {
@@ -65,6 +67,7 @@ func newWelcomeUI(a fyne.App, w fyne.Window, content AppContent, desktop Desktop
 		updates:    newUpdateChecker(content.UI),
 		themeMode:  loadThemeMode(a.Preferences()),
 		quit:       a.Quit,
+		later:      func(d time.Duration, f func()) { time.AfterFunc(d, f) },
 	}
 	ui.updates.onError = func(err error) {
 		dialog.ShowInformation(lang.L(content.UI.CheckForUpdates), ui.updates.errorText(err), w)
