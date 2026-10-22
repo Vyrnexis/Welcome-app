@@ -19,6 +19,7 @@ type welcomeUI struct {
 	app         fyne.App
 	window      fyne.Window
 	desktop     DesktopInfo
+	host        hostPaths
 	content     AppContent
 	pageArea    *fyne.Container
 	navButtons  map[string]*widget.Button
@@ -57,6 +58,7 @@ func newWelcomeUI(a fyne.App, w fyne.Window, content AppContent, desktop Desktop
 		app:        a,
 		window:     w,
 		desktop:    desktop,
+		host:       defaultHostPaths,
 		content:    content,
 		pageArea:   container.NewStack(),
 		navButtons: make(map[string]*widget.Button),

@@ -45,7 +45,8 @@ var actions = map[string]actionSpec{
 			ui.openDesktopCommand(card, ui.content.SystemSettingsCommands)
 		},
 	},
-	"donate": {icon: theme.InfoIcon, needsURL: true, run: (*welcomeUI).openCardURL},
+	"whatsnew": {icon: theme.HistoryIcon, needsURL: true, run: (*welcomeUI).openCardURL},
+	"donate":   {icon: theme.InfoIcon, needsURL: true, run: (*welcomeUI).openCardURL},
 }
 
 // openDesktopCommand launches the command configured for the current desktop, or the default entry.

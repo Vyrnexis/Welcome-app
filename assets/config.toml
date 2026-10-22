@@ -43,6 +43,13 @@ Action = "learn"
 URL = "https://help.getsol.us/docs/user/intro"
 
 [[WelcomeCards]]
+Title = "What's new in Solus"
+Body = "Read the latest release notes, news, and announcements from the Solus team."
+Button = "Read the blog"
+Action = "whatsnew"
+URL = "https://getsol.us/blog/"
+
+[[WelcomeCards]]
 Title = "System Settings"
 Body = "Configure displays, printers, Bluetooth, audio, power, and more."
 Button = "Open Settings"

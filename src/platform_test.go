@@ -1,6 +1,8 @@
 package main
 
 import (
+	"maps"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -54,5 +56,23 @@ func TestSystemDetailsSummary(t *testing.T) {
 	arch := architectureLabel(ui)
 	if !strings.Contains(summary, arch) {
 		t.Errorf("system details summary %q does not contain architecture %q", summary, arch)
+	}
+}
+
+// TestParseOSRelease verifies quotes, comments, and malformed lines are handled and a missing file is empty.
+func TestParseOSRelease(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "os-release")
+	writeFile(t, path, "# comment\nNAME=\"Solus\"\nPRETTY_NAME='Solus 4.7 Endurance'\nID=solus\n\nnot a pair\nVERSION= \"4.7\" \nEMPTY=\n")
+
+	values := parseOSRelease(path)
+	want := map[string]string{"NAME": "Solus", "PRETTY_NAME": "Solus 4.7 Endurance", "ID": "solus", "VERSION": "4.7", "EMPTY": ""}
+	if !maps.Equal(values, want) {
+		t.Errorf("parseOSRelease() = %v, want %v", values, want)
+	}
+	if got := prettyName(path); got != "Solus 4.7 Endurance" {
+		t.Errorf("prettyName() = %q", got)
+	}
+	if got := prettyName(filepath.Join(t.TempDir(), "absent")); got != "" {
+		t.Errorf("prettyName(missing) = %q, want empty", got)
 	}
 }

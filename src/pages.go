@@ -55,7 +55,7 @@ func (ui *welcomeUI) welcomePage() fyne.CanvasObject {
 
 // systemCard shows the desktop edition and system details with the update button.
 func (ui *welcomeUI) systemCard() fyne.CanvasObject {
-	name := newHeading(lang.L(ui.content.UI.SolusLinux), 22)
+	name := newHeading(ui.releaseName(), 22)
 	edition := widget.NewLabel(ui.desktopName() + lang.L(ui.content.UI.EditionSuffix))
 	edition.TextStyle = fyne.TextStyle{Bold: true}
 	sysDetails := widget.NewLabel(systemDetailsSummary(ui.content.UI))
@@ -67,6 +67,14 @@ func (ui *welcomeUI) systemCard() fyne.CanvasObject {
 
 	details := container.NewVBox(name, edition, sysDetails, layout.NewSpacer(), updateButton)
 	return widget.NewCard("", "", container.NewHBox(desktopIcon(ui.desktop), details))
+}
+
+// releaseName prefers the installed release (e.g. "Solus 4.7 Endurance") over the generic configured name.
+func (ui *welcomeUI) releaseName() string {
+	if name := prettyName(ui.host.osRelease); name != "" {
+		return name
+	}
+	return lang.L(ui.content.UI.SolusLinux)
 }
 
 func (ui *welcomeUI) desktopName() string {

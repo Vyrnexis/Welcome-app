@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"testing"
 
 	"fyne.io/fyne/v2"
@@ -149,5 +150,18 @@ func TestAllPagesBuild(t *testing.T) {
 		if spec.build(ui) == nil {
 			t.Errorf("page %q built nothing", key)
 		}
+	}
+}
+
+// TestSystemCardReleaseName verifies the release heading comes from os-release with a configured fallback.
+func TestSystemCardReleaseName(t *testing.T) {
+	ui := newTestUI(t)
+	ui.host.osRelease = filepath.Join(t.TempDir(), "os-release")
+	if got := ui.releaseName(); got != "Solus Linux" {
+		t.Errorf("releaseName() without file = %q, want the configured name", got)
+	}
+	writeFile(t, ui.host.osRelease, "PRETTY_NAME=\"Solus 4.7 Endurance\"\n")
+	if got := ui.releaseName(); got != "Solus 4.7 Endurance" {
+		t.Errorf("releaseName() = %q", got)
 	}
 }
