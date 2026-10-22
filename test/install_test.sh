@@ -4,9 +4,24 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TEST_ROOT="$(mktemp -d)"
 
-# cleanup removes all staged installation trees created by this test.
+created_dummy=false
+if [[ ! -f "$ROOT_DIR/bin/solus-welcome" ]]; then
+  mkdir -p "$ROOT_DIR/bin"
+  cat <<'EOF' > "$ROOT_DIR/bin/solus-welcome"
+#!/bin/sh
+exit 0
+EOF
+  chmod 755 "$ROOT_DIR/bin/solus-welcome"
+  created_dummy=true
+fi
+
+# cleanup removes temporary test directories and the dummy binary if created.
 cleanup() {
   rm -rf -- "$TEST_ROOT"
+  if [[ "$created_dummy" == true ]]; then
+    rm -f -- "$ROOT_DIR/bin/solus-welcome"
+    rmdir "$ROOT_DIR/bin" 2>/dev/null || true
+  fi
 }
 trap cleanup EXIT
 
@@ -26,70 +41,138 @@ assert_mode() {
   [[ "$actual_mode" == "$expected_mode" ]] || fail "$path has mode $actual_mode, want $expected_mode"
 }
 
-# run_install_test verifies staged files, permissions, and prefix-aware desktop paths.
-run_install_test() {
-  local prefix="$1"
+# assert_not_exists verifies that a path does not exist.
+assert_not_exists() {
+  local path="$1"
+  if [[ -e "$path" || -L "$path" ]]; then
+    fail "path should not exist: $path"
+  fi
+}
+
+# Test invalid arguments
+test_invalid_arguments() {
   local test_destdir
-  local install_root
-  local normalized_prefix="${prefix%/}"
-  local relative_path
-  local desktop_file
   test_destdir="$(mktemp -d -p "$TEST_ROOT")"
 
-  DESTDIR="$test_destdir" PREFIX="$prefix" "$ROOT_DIR/install.sh" --prebuilt
-  install_root="${test_destdir}${normalized_prefix}"
+  if "$ROOT_DIR/install.sh" --invalid-arg >/dev/null 2>&1; then
+    fail "expected failure for unknown argument"
+  fi
 
-  assert_mode 755 "$install_root/bin/solus-welcome"
-  assert_mode 755 "$install_root/share/solus-welcome"
-  assert_mode 755 "$install_root/share/solus-welcome/assets"
-  assert_mode 755 "$install_root/share/solus-welcome/assets/locales"
-  assert_mode 644 "$install_root/share/solus-welcome/assets/config.toml"
+  if "$ROOT_DIR/install.sh" --build --prebuilt >/dev/null 2>&1; then
+    fail "expected failure for multiple arguments"
+  fi
 
-  for svg in logo budgie gnome kde xfce; do
-    assert_mode 644 "$install_root/share/solus-welcome/assets/$svg.svg"
-  done
+  if DESTDIR="$test_destdir" PREFIX="relative/prefix" "$ROOT_DIR/install.sh" --prebuilt >/dev/null 2>&1; then
+    fail "expected failure for relative PREFIX"
+  fi
 
-  while IFS= read -r -d '' directory; do
-    relative_path="${directory#"$ROOT_DIR/assets/locales"}"
-    assert_mode 755 "$install_root/share/solus-welcome/assets/locales$relative_path"
-  done < <(find "$ROOT_DIR/assets/locales" -type d -print0)
+  if DESTDIR="$test_destdir" PREFIX="/opt/solus welcome" "$ROOT_DIR/install.sh" --prebuilt >/dev/null 2>&1; then
+    fail "expected failure for whitespace in PREFIX"
+  fi
 
-  while IFS= read -r -d '' locale_file; do
-    relative_path="${locale_file#"$ROOT_DIR/assets/locales/"}"
-    assert_mode 644 "$install_root/share/solus-welcome/assets/locales/$relative_path"
-  done < <(find "$ROOT_DIR/assets/locales" -type f -print0)
-
-  desktop_file="$install_root/share/applications/solus-welcome.desktop"
-  assert_mode 644 "$desktop_file"
-  grep -Fqx "Exec=$normalized_prefix/bin/solus-welcome" "$desktop_file" || fail "incorrect Exec path for $prefix"
-  grep -Fqx "Icon=$normalized_prefix/share/solus-welcome/assets/logo.svg" "$desktop_file" || fail "incorrect Icon path for $prefix"
-  if command -v desktop-file-validate >/dev/null 2>&1; then
-    desktop-file-validate "$desktop_file"
+  if DESTDIR="$test_destdir" PREFIX="/usr" SYSCONFDIR="relative/etc" "$ROOT_DIR/install.sh" --prebuilt >/dev/null 2>&1; then
+    fail "expected failure for relative SYSCONFDIR"
   fi
 }
 
-# run_binary_bundle_test verifies source-free release packages install without prompting.
-run_binary_bundle_test() {
-  local bundle_dir="$TEST_ROOT/solus-welcome-v0.1.2"
-  local test_destdir="$TEST_ROOT/bundle-install"
-  local install_root="$test_destdir/usr"
-  mkdir -p "$bundle_dir/bin" "$test_destdir"
-  cp "$ROOT_DIR/bin/solus-welcome" "$bundle_dir/bin/"
-  cp -r "$ROOT_DIR/assets" "$bundle_dir/"
-  cp "$ROOT_DIR/install.sh" "$ROOT_DIR/solus-welcome.desktop" "$bundle_dir/"
+# Test staged install and uninstall for PREFIX=/usr
+test_prefix_usr() {
+  local test_destdir
+  test_destdir="$(mktemp -d -p "$TEST_ROOT")"
 
+  DESTDIR="$test_destdir" PREFIX="/usr" "$ROOT_DIR/install.sh" --prebuilt
+
+  assert_mode 755 "$test_destdir/usr/bin/solus-welcome"
+  assert_mode 644 "$test_destdir/usr/share/applications/us.getsol.SolusWelcome.desktop"
+  assert_mode 644 "$test_destdir/usr/share/icons/hicolor/scalable/apps/us.getsol.SolusWelcome.svg"
+  assert_mode 644 "$test_destdir/etc/xdg/autostart/us.getsol.SolusWelcome.desktop"
+
+  assert_not_exists "$test_destdir/usr/share/solus-welcome"
+
+  grep -Fqx "Exec=solus-welcome" "$test_destdir/usr/share/applications/us.getsol.SolusWelcome.desktop" || fail "Exec not solus-welcome in usr app desktop"
+  grep -Fqx "Exec=solus-welcome" "$test_destdir/etc/xdg/autostart/us.getsol.SolusWelcome.desktop" || fail "Exec not solus-welcome in usr autostart desktop"
+
+  if command -v desktop-file-validate >/dev/null 2>&1; then
+    desktop-file-validate "$test_destdir/usr/share/applications/us.getsol.SolusWelcome.desktop"
+    desktop-file-validate "$test_destdir/etc/xdg/autostart/us.getsol.SolusWelcome.desktop"
+  fi
+
+  # Uninstall and verify removal
+  DESTDIR="$test_destdir" PREFIX="/usr" "$ROOT_DIR/install.sh" --uninstall
+
+  assert_not_exists "$test_destdir/usr/bin/solus-welcome"
+  assert_not_exists "$test_destdir/usr/share/applications/us.getsol.SolusWelcome.desktop"
+  assert_not_exists "$test_destdir/usr/share/icons/hicolor/scalable/apps/us.getsol.SolusWelcome.svg"
+  assert_not_exists "$test_destdir/etc/xdg/autostart/us.getsol.SolusWelcome.desktop"
+}
+
+# Test staged install and uninstall for PREFIX=/opt/solus-welcome/ with trailing slash
+test_prefix_custom_opt() {
+  local test_destdir
+  test_destdir="$(mktemp -d -p "$TEST_ROOT")"
+
+  DESTDIR="$test_destdir" PREFIX="/opt/solus-welcome/" "$ROOT_DIR/install.sh" --prebuilt
+
+  assert_mode 755 "$test_destdir/opt/solus-welcome/bin/solus-welcome"
+  assert_mode 644 "$test_destdir/opt/solus-welcome/share/applications/us.getsol.SolusWelcome.desktop"
+  assert_mode 644 "$test_destdir/opt/solus-welcome/share/icons/hicolor/scalable/apps/us.getsol.SolusWelcome.svg"
+  assert_mode 644 "$test_destdir/etc/xdg/autostart/us.getsol.SolusWelcome.desktop"
+
+  assert_not_exists "$test_destdir/opt/solus-welcome/share/solus-welcome"
+
+  grep -Fqx "Exec=/opt/solus-welcome/bin/solus-welcome" "$test_destdir/opt/solus-welcome/share/applications/us.getsol.SolusWelcome.desktop" || fail "Exec not absolute in opt app desktop"
+  grep -Fqx "Exec=/opt/solus-welcome/bin/solus-welcome" "$test_destdir/etc/xdg/autostart/us.getsol.SolusWelcome.desktop" || fail "Exec not absolute in opt autostart desktop"
+
+  if command -v desktop-file-validate >/dev/null 2>&1; then
+    desktop-file-validate "$test_destdir/opt/solus-welcome/share/applications/us.getsol.SolusWelcome.desktop"
+    desktop-file-validate "$test_destdir/etc/xdg/autostart/us.getsol.SolusWelcome.desktop"
+  fi
+
+  # Create legacy files to verify they are cleaned up on uninstall
+  mkdir -p "$test_destdir/opt/solus-welcome/share/solus-welcome"
+  touch "$test_destdir/opt/solus-welcome/share/solus-welcome/legacy.txt"
+  touch "$test_destdir/opt/solus-welcome/share/applications/solus-welcome.desktop"
+
+  # Uninstall and verify removal of all 4 files plus legacy files
+  DESTDIR="$test_destdir" PREFIX="/opt/solus-welcome/" "$ROOT_DIR/install.sh" --uninstall
+
+  assert_not_exists "$test_destdir/opt/solus-welcome/bin/solus-welcome"
+  assert_not_exists "$test_destdir/opt/solus-welcome/share/applications/us.getsol.SolusWelcome.desktop"
+  assert_not_exists "$test_destdir/opt/solus-welcome/share/icons/hicolor/scalable/apps/us.getsol.SolusWelcome.svg"
+  assert_not_exists "$test_destdir/etc/xdg/autostart/us.getsol.SolusWelcome.desktop"
+  assert_not_exists "$test_destdir/opt/solus-welcome/share/solus-welcome"
+  assert_not_exists "$test_destdir/opt/solus-welcome/share/applications/solus-welcome.desktop"
+}
+
+# Test release package without source (defaulting to --prebuilt and using data/ icon)
+test_release_bundle() {
+  local bundle_dir="$TEST_ROOT/solus-welcome-v0.2.0"
+  local test_destdir="$TEST_ROOT/bundle-install"
+  mkdir -p "$bundle_dir/bin" "$bundle_dir/data" "$test_destdir"
+
+  cp "$ROOT_DIR/bin/solus-welcome" "$bundle_dir/bin/"
+  cp "$ROOT_DIR/data/us.getsol.SolusWelcome.desktop" "$bundle_dir/data/"
+  cp "$ROOT_DIR/data/us.getsol.SolusWelcome-autostart.desktop" "$bundle_dir/data/"
+  cp "$ROOT_DIR/assets/logo.svg" "$bundle_dir/data/us.getsol.SolusWelcome.svg"
+  cp "$ROOT_DIR/install.sh" "$bundle_dir/"
+  cp "$ROOT_DIR/README.md" "$bundle_dir/"
+
+  # Running without arguments in a release bundle should default to --prebuilt
   DESTDIR="$test_destdir" PREFIX="/usr" "$bundle_dir/install.sh"
-  assert_mode 755 "$install_root/bin/solus-welcome"
-  assert_mode 644 "$install_root/share/solus-welcome/assets/config.toml"
-  assert_mode 644 "$install_root/share/applications/solus-welcome.desktop"
+
+  assert_mode 755 "$test_destdir/usr/bin/solus-welcome"
+  assert_mode 644 "$test_destdir/usr/share/applications/us.getsol.SolusWelcome.desktop"
+  assert_mode 644 "$test_destdir/usr/share/icons/hicolor/scalable/apps/us.getsol.SolusWelcome.svg"
+  assert_mode 644 "$test_destdir/etc/xdg/autostart/us.getsol.SolusWelcome.desktop"
 
   if DESTDIR="$test_destdir" PREFIX="/usr" "$bundle_dir/install.sh" --build >/dev/null 2>&1; then
-    fail "source-free release package unexpectedly accepted --build"
+    fail "source-free release bundle unexpectedly accepted --build"
   fi
 }
 
-run_install_test "/usr"
-run_install_test "/opt/solus-welcome"
-run_binary_bundle_test
+test_invalid_arguments
+test_prefix_usr
+test_prefix_custom_opt
+test_release_bundle
 
 echo "install test passed"
