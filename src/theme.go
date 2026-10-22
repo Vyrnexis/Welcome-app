@@ -67,11 +67,18 @@ func (t *solusTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) 
 		variant = theme.VariantDark
 	}
 
-	if name == theme.ColorNamePrimary {
+	switch name {
+	case theme.ColorNamePrimary:
 		if variant == theme.VariantDark {
 			return color.NRGBA{R: 99, G: 179, B: 237, A: 255}
 		}
 		return color.NRGBA{R: 49, G: 130, B: 206, A: 255}
+	case theme.ColorNameForegroundOnPrimary:
+		// White on the light dark-mode blue is about 2:1; near-black keeps button labels readable.
+		if variant == theme.VariantDark {
+			return color.NRGBA{R: 26, G: 32, B: 44, A: 255}
+		}
+		return color.White
 	}
 
 	return theme.DefaultTheme().Color(name, variant)
