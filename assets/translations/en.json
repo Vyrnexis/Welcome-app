@@ -1,0 +1,6 @@
+{
+  "updates_available": {
+    "one": "{{.Count}} update available",
+    "other": "{{.Count}} updates available"
+  }
+}

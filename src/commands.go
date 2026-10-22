@@ -1,21 +1,16 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
-	"context"
 	"errors"
 	"net/url"
 	"os/exec"
 	"strings"
-	"time"
 
 	"fyne.io/fyne/v2"
 )
 
-const updateCheckTimeout = 30 * time.Second
+var errNoTerminal = errors.New("no supported terminal emulator was found")
 
-// openURL parses a raw URL string and opens it in the user's default web browser.
 func openURL(app fyne.App, rawURL string) error {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
@@ -24,7 +19,6 @@ func openURL(app fyne.App, rawURL string) error {
 	return app.OpenURL(parsed)
 }
 
-// launchCommand starts an external executable asynchronously using the specified arguments.
 func launchCommand(command []string) error {
 	if len(command) == 0 {
 		return errors.New("no command provided")
@@ -50,18 +44,16 @@ func commandErrorMessage(missing string, err error) string {
 	return err.Error()
 }
 
-// launchTerminalCommand runs a shell command inside a supported terminal emulator.
-func launchTerminalCommand(title, shellCommand string) error {
-	command := terminalCommand(title, shellCommand)
+func launchTerminalCommand(title, shellCommand, closePrompt string) error {
+	command := terminalCommand(title, shellCommand, closePrompt)
 	if len(command) == 0 {
-		return errors.New("no supported terminal emulator was found")
+		return errNoTerminal
 	}
 	return launchCommand(command)
 }
 
-// terminalCommand wraps a shell command with the necessary arguments to execute inside a detected terminal emulator.
-func terminalCommand(title, shellCommand string) []string {
-	holdCommand := shellCommand + "; echo; read -rp 'Press Enter to close...'"
+func terminalCommand(title, shellCommand, closePrompt string) []string {
+	holdCommand := shellCommand + "; echo; read -rp " + shellQuote(closePrompt)
 	for _, launcher := range terminalLaunchers {
 		if executableExists(launcher.executable) {
 			return launcher.command(title, holdCommand)
@@ -100,46 +92,11 @@ var terminalLaunchers = []terminalLauncher{
 	}},
 }
 
-// executableExists checks if a specific command-line utility is available in the system's PATH.
 func executableExists(name string) bool {
 	_, err := exec.LookPath(name)
 	return err == nil
 }
 
-// shellQuote escapes a string so it can be safely passed as a single argument in a shell command.
 func shellQuote(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
-}
-
-// countAvailableUpdates queries the eopkg package manager to determine the number of available system updates.
-func countAvailableUpdates() (int, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), updateCheckTimeout)
-	defer cancel()
-
-	output, err := exec.CommandContext(ctx, "eopkg", "list-upgrades").CombinedOutput()
-	if err != nil {
-		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return 0, errors.New("update check timed out")
-		}
-		message := strings.TrimSpace(string(output))
-		if message == "" {
-			message = "unable to check updates"
-		}
-		return 0, errors.New(message)
-	}
-
-	return parseAvailableUpdates(output), nil
-}
-
-// parseAvailableUpdates counts the upgrade lines from eopkg list-upgrades output bytes.
-func parseAvailableUpdates(output []byte) int {
-	count := 0
-	scanner := bufio.NewScanner(bytes.NewReader(output))
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line != "" && !strings.HasPrefix(line, "No packages to upgrade") {
-			count++
-		}
-	}
-	return count
 }

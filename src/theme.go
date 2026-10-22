@@ -4,46 +4,134 @@ import (
 	"image/color"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
 )
 
+type themeMode string
+
+const (
+	themeModeSystem themeMode = "system"
+	themeModeLight  themeMode = "light"
+	themeModeDark   themeMode = "dark"
+
+	themeModePreferenceKey = "themeMode"
+	legacyDarkThemeKey     = "darkTheme"
+)
+
+// themeModes is the order shown in the theme selector.
+var themeModes = []themeMode{themeModeSystem, themeModeLight, themeModeDark}
+
+// hasLegacyDarkTheme reports whether the old bool key is stored; Preferences has no direct presence check.
+func hasLegacyDarkTheme(prefs fyne.Preferences) bool {
+	return prefs.BoolWithFallback(legacyDarkThemeKey, false) == prefs.BoolWithFallback(legacyDarkThemeKey, true)
+}
+
+// loadThemeMode reads the saved mode, migrating the legacy boolean "darkTheme" preference once.
+func loadThemeMode(prefs fyne.Preferences) themeMode {
+	if hasLegacyDarkTheme(prefs) {
+		defer prefs.RemoveValue(legacyDarkThemeKey)
+		if prefs.StringWithFallback(themeModePreferenceKey, "") == "" {
+			mode := themeModeSystem
+			if prefs.Bool(legacyDarkThemeKey) {
+				mode = themeModeDark
+			}
+			prefs.SetString(themeModePreferenceKey, string(mode))
+			return mode
+		}
+	}
+
+	switch mode := themeMode(prefs.StringWithFallback(themeModePreferenceKey, "")); mode {
+	case themeModeLight, themeModeDark:
+		return mode
+	default:
+		return themeModeSystem
+	}
+}
+
 type solusTheme struct {
-	dark bool
+	mode themeMode
 }
 
-// newSolusTheme initializes a custom Fyne theme representing Solus branding with optional dark mode support.
-func newSolusTheme(dark bool) fyne.Theme {
-	return &solusTheme{dark: dark}
+func newSolusTheme(mode themeMode) fyne.Theme {
+	return &solusTheme{mode: mode}
 }
 
-// Color returns a specific theme color based on the requested name, overriding the primary color with Solus blue.
+// Color follows the variant Fyne passes (the desktop preference) unless a mode forces light or dark.
 func (t *solusTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
-	activeVariant := theme.VariantLight
-	if t.dark {
-		activeVariant = theme.VariantDark
+	switch t.mode {
+	case themeModeLight:
+		variant = theme.VariantLight
+	case themeModeDark:
+		variant = theme.VariantDark
 	}
 
 	if name == theme.ColorNamePrimary {
-		if t.dark {
+		if variant == theme.VariantDark {
 			return color.NRGBA{R: 99, G: 179, B: 237, A: 255}
 		}
 		return color.NRGBA{R: 49, G: 130, B: 206, A: 255}
 	}
 
-	return theme.DefaultTheme().Color(name, activeVariant)
+	return theme.DefaultTheme().Color(name, variant)
 }
 
-// Font delegates typography requests directly to the default Fyne system theme.
 func (t *solusTheme) Font(style fyne.TextStyle) fyne.Resource {
 	return theme.DefaultTheme().Font(style)
 }
 
-// Icon delegates all standard icon resource requests to the default Fyne system theme.
 func (t *solusTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
 	return theme.DefaultTheme().Icon(name)
 }
 
-// Size returns standard dimension values from the default Fyne theme.
 func (t *solusTheme) Size(name fyne.ThemeSizeName) float32 {
 	return theme.DefaultTheme().Size(name)
 }
+
+// heading is a bold title that re-reads the foreground colour on every refresh, so it follows theme changes.
+type heading struct {
+	widget.BaseWidget
+	text string
+	size float32
+}
+
+func newHeading(text string, size float32) *heading {
+	h := &heading{text: text, size: size}
+	h.ExtendBaseWidget(h)
+	return h
+}
+
+func (h *heading) CreateRenderer() fyne.WidgetRenderer {
+	r := &headingRenderer{heading: h, label: canvas.NewText(h.text, nil)}
+	r.label.TextStyle = fyne.TextStyle{Bold: true}
+	r.Refresh()
+	return r
+}
+
+type headingRenderer struct {
+	heading *heading
+	label   *canvas.Text
+}
+
+func (r *headingRenderer) Layout(size fyne.Size) {
+	r.label.Move(fyne.NewPos(0, 0))
+	r.label.Resize(size)
+}
+
+func (r *headingRenderer) MinSize() fyne.Size {
+	return r.label.MinSize()
+}
+
+func (r *headingRenderer) Refresh() {
+	r.label.Text = r.heading.text
+	r.label.TextSize = r.heading.size
+	r.label.Color = theme.Color(theme.ColorNameForeground)
+	r.label.Refresh()
+}
+
+func (r *headingRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{r.label}
+}
+
+func (r *headingRenderer) Destroy() {}

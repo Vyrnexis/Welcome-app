@@ -3,16 +3,27 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
-	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/Vyrnexis/welcome-app/assets"
 )
 
+// systemConfigPath is the optional distro-provided override for the embedded configuration.
+const systemConfigPath = "/etc/solus-welcome/config.toml"
+
+// defaultDesktopKey names the command entry used when the detected desktop has none.
+const defaultDesktopKey = "default"
+
+// Fields tagged i18n:"-" are identifiers, commands, or URLs that translators must never see.
+
 type CommandInfo struct {
-	Command []string `toml:"Command"`
+	Command []string `toml:"Command" i18n:"-"`
 	Missing string   `toml:"Missing"`
 }
 
@@ -20,46 +31,58 @@ type WelcomeCard struct {
 	Title  string `toml:"Title"`
 	Body   string `toml:"Body"`
 	Button string `toml:"Button"`
-	Action string `toml:"Action"`
+	Action string `toml:"Action" i18n:"-"`
+	URL    string `toml:"URL" i18n:"-"`
 }
 
 type LinkCard struct {
 	Title string `toml:"Title"`
 	Body  string `toml:"Body"`
-	URL   string `toml:"URL"`
+	URL   string `toml:"URL" i18n:"-"`
 }
 
 type DesktopAction struct {
 	Title   string   `toml:"Title"`
 	Body    string   `toml:"Body"`
-	Command []string `toml:"Command"`
+	Command []string `toml:"Command" i18n:"-"`
 }
 
 type NavItem struct {
-	Key   string `toml:"Key"`
+	Key   string `toml:"Key" i18n:"-"`
 	Label string `toml:"Label"`
 }
 
 type UIStrings struct {
+	WindowTitle          string `toml:"WindowTitle"`
+	SidebarTitle         string `toml:"SidebarTitle"`
 	Tagline              string `toml:"Tagline"`
 	ShowOnStartup        string `toml:"ShowOnStartup"`
 	Close                string `toml:"Close"`
-	DarkTheme            string `toml:"DarkTheme"`
+	ThemeLabel           string `toml:"ThemeLabel"`
+	ThemeSystem          string `toml:"ThemeSystem"`
+	ThemeLight           string `toml:"ThemeLight"`
+	ThemeDark            string `toml:"ThemeDark"`
 	WelcomeTitle         string `toml:"WelcomeTitle"`
 	WelcomeSubtitle      string `toml:"WelcomeSubtitle"`
 	GettingStarted       string `toml:"GettingStarted"`
 	SolusLinux           string `toml:"SolusLinux"`
 	EditionSuffix        string `toml:"EditionSuffix"`
+	UnknownDesktop       string `toml:"UnknownDesktop"`
+	Bits64               string `toml:"Bits64"`
+	MemoryFormat         string `toml:"MemoryFormat"`
 	CheckForUpdates      string `toml:"CheckForUpdates"`
 	CheckingUpdates      string `toml:"CheckingUpdates"`
 	UnableToCheckUpdates string `toml:"UnableToCheckUpdates"`
+	UpdateTimedOut       string `toml:"UpdateTimedOut"`
+	UpdateCheckFailed    string `toml:"UpdateCheckFailed"`
 	SystemUpToDate       string `toml:"SystemUpToDate"`
-	OneUpdateAvailable   string `toml:"OneUpdateAvailable"`
-	UpdatesAvailable     string `toml:"UpdatesAvailable"`
 	NoDesktopSettings    string `toml:"NoDesktopSettings"`
 	OpenButton           string `toml:"OpenButton"`
 	NotInstalled         string `toml:"NotInstalled"`
 	LearnMoreButton      string `toml:"LearnMoreButton"`
+	NoTerminal           string `toml:"NoTerminal"`
+	NoAutostartDir       string `toml:"NoAutostartDir"`
+	PressEnterToClose    string `toml:"PressEnterToClose"`
 }
 
 type AppContent struct {
@@ -74,111 +97,93 @@ type AppContent struct {
 	UI                     UIStrings                  `toml:"UI"`
 }
 
-// NavLabel retrieves the label for a given navigation key or returns the fallback if not found.
-func (c *AppContent) NavLabel(key, fallback string) string {
+var errBaseContent = errors.New("base content unavailable")
+
+// NavLabel returns the configured label for a navigation key, or the key itself if it is not configured.
+func (c *AppContent) NavLabel(key string) string {
 	for _, item := range c.NavItems {
 		if item.Key == key {
 			return item.Label
 		}
 	}
-	return fallback
+	return key
 }
 
-// WelcomeCardTitle retrieves the title for a card action identifier or returns the fallback.
-func (c *AppContent) WelcomeCardTitle(action, fallback string) string {
-	for _, card := range c.WelcomeCards {
-		if card.Action == action {
-			return card.Title
+// commandFor picks the command for a desktop, falling back to the configured default entry.
+func commandFor(commands map[string]CommandInfo, desktopKey string) CommandInfo {
+	if command, ok := commands[desktopKey]; ok {
+		return command
+	}
+	return commands[defaultDesktopKey]
+}
+
+// commandGroups names the per-desktop command tables so they can be validated uniformly.
+func (c *AppContent) commandGroups() map[string]map[string]CommandInfo {
+	return map[string]map[string]CommandInfo{
+		"software":  c.SoftwareCommands,
+		"customise": c.CustomiseCommands,
+		"settings":  c.SystemSettingsCommands,
+	}
+}
+
+// loadContent returns the system override when it is valid and the embedded configuration otherwise.
+// The returned source names the file used; an error is only returned when the embedded configuration is unusable.
+func loadContent(overridePath string) (content AppContent, source string, err error) {
+	if overridePath != "" {
+		data, readErr := os.ReadFile(overridePath)
+		switch {
+		case readErr == nil:
+			override, decodeErr := decodeContent(data)
+			if decodeErr == nil {
+				return override, overridePath, nil
+			}
+			log.Printf("warning: ignoring %s: %v", overridePath, decodeErr)
+		case !errors.Is(readErr, os.ErrNotExist):
+			log.Printf("warning: ignoring %s: %v", overridePath, readErr)
 		}
 	}
-	return fallback
-}
 
-var Content AppContent
-
-var errBaseContent = errors.New("base content unavailable")
-
-// getSystemLocales detects the system locale and returns ordered candidate language codes.
-func getSystemLocales() []string {
-	lang := os.Getenv("LC_ALL")
-	if lang == "" {
-		lang = os.Getenv("LC_MESSAGES")
-	}
-	if lang == "" {
-		lang = os.Getenv("LANG")
-	}
-	if lang == "" || lang == "C" || lang == "POSIX" {
-		return []string{"en"}
-	}
-	clean := strings.Split(lang, ".")[0]
-	clean = strings.Split(clean, "@")[0]
-	if clean == "" || clean == "C" || clean == "POSIX" {
-		return []string{"en"}
-	}
-	base := strings.Split(clean, "_")[0]
-	if clean != base {
-		return []string{clean, base}
-	}
-	return []string{base}
-}
-
-// LoadContent reads the base TOML configuration and applies language-specific overrides if available.
-func LoadContent(baseDir string) error {
-	path := filepath.Join(baseDir, "assets", "config.toml")
-	var baseContent AppContent
-	metadata, err := toml.DecodeFile(path, &baseContent)
+	data, err := assets.FS.ReadFile("config.toml")
 	if err != nil {
-		return errors.Join(errBaseContent, fmt.Errorf("load base content: %w", err))
+		return AppContent{}, "", errors.Join(errBaseContent, err)
+	}
+	content, err = decodeContent(data)
+	if err != nil {
+		return AppContent{}, "", errors.Join(errBaseContent, err)
+	}
+	return content, "embedded", nil
+}
+
+// decodeContent parses and validates a configuration document, rejecting unknown keys.
+func decodeContent(data []byte) (AppContent, error) {
+	var content AppContent
+	metadata, err := toml.Decode(string(data), &content)
+	if err != nil {
+		return AppContent{}, fmt.Errorf("decode configuration: %w", err)
 	}
 	if keys := metadata.Undecoded(); len(keys) > 0 {
-		return errors.Join(errBaseContent, fmt.Errorf("unknown base content keys: %v", keys))
+		return AppContent{}, fmt.Errorf("unknown configuration keys: %v", keys)
 	}
-	if err := validateContent(baseContent); err != nil {
-		return errors.Join(errBaseContent, err)
+	if err := validateContent(content); err != nil {
+		return AppContent{}, err
 	}
-	Content = baseContent
+	return content, nil
+}
 
-	var localeErrors []error
-
-	for _, loc := range getSystemLocales() {
-		if loc == "en" {
-			continue
-		}
-		localizedPath := filepath.Join(baseDir, "assets", "locales", loc+".toml")
-		if fileExists(localizedPath) {
-			var localizedContent AppContent
-			if _, err := toml.DecodeFile(path, &localizedContent); err != nil {
-				return errors.Join(errBaseContent, fmt.Errorf("reload base content: %w", err))
-			}
-			metadata, err := toml.DecodeFile(localizedPath, &localizedContent)
-			if err != nil {
-				localeErrors = append(localeErrors, fmt.Errorf("load locale %s: %w", loc, err))
-				continue
-			}
-			if keys := metadata.Undecoded(); len(keys) > 0 {
-				localeErrors = append(localeErrors, fmt.Errorf("load locale %s: unknown keys: %v", loc, keys))
-				continue
-			}
-			if err := validateContent(localizedContent); err != nil {
-				localeErrors = append(localeErrors, fmt.Errorf("load locale %s: %w", loc, err))
-				continue
-			}
-			Content = localizedContent
-			return errors.Join(localeErrors...)
-		}
-	}
-	return errors.Join(localeErrors...)
+// validURL reports whether raw is an absolute http(s) URL.
+func validURL(raw string) bool {
+	parsed, err := url.ParseRequestURI(raw)
+	return err == nil && (parsed.Scheme == "https" || parsed.Scheme == "http") && parsed.Host != ""
 }
 
 // validateContent rejects configuration that would produce missing controls, silent actions, or unsafe links.
 func validateContent(content AppContent) error {
-	knownNav := map[string]bool{"welcome": true, "customise": true, "support": true, "contribute": true}
-	seenNav := make(map[string]bool, len(content.NavItems))
 	if len(content.NavItems) == 0 {
 		return errors.New("configuration has no navigation items")
 	}
+	seenNav := make(map[string]bool, len(content.NavItems))
 	for _, item := range content.NavItems {
-		if !knownNav[item.Key] || strings.TrimSpace(item.Label) == "" {
+		if _, ok := pages[item.Key]; !ok || strings.TrimSpace(item.Label) == "" {
 			return fmt.Errorf("invalid navigation item %q", item.Key)
 		}
 		if seenNav[item.Key] {
@@ -187,11 +192,14 @@ func validateContent(content AppContent) error {
 		seenNav[item.Key] = true
 	}
 
-	knownActions := map[string]bool{"updates": true, "software": true, "customise": true, "learn": true, "settings": true, "donate": true}
 	seenActions := make(map[string]bool, len(content.WelcomeCards))
 	for _, card := range content.WelcomeCards {
-		if !knownActions[card.Action] || strings.TrimSpace(card.Title) == "" || strings.TrimSpace(card.Button) == "" {
+		spec, ok := actions[card.Action]
+		if !ok || strings.TrimSpace(card.Title) == "" || strings.TrimSpace(card.Button) == "" {
 			return fmt.Errorf("invalid welcome action %q", card.Action)
+		}
+		if spec.needsURL && !validURL(card.URL) {
+			return fmt.Errorf("invalid URL %q for welcome action %q", card.URL, card.Action)
 		}
 		if seenActions[card.Action] {
 			return fmt.Errorf("duplicate welcome action %q", card.Action)
@@ -199,80 +207,53 @@ func validateContent(content AppContent) error {
 		seenActions[card.Action] = true
 	}
 
-	knownDesktops := map[string]bool{"budgie": true, "gnome": true, "kde": true, "xfce": true}
-	commandGroups := map[string]map[string]CommandInfo{
-		"software":  content.SoftwareCommands,
-		"customise": content.CustomiseCommands,
-		"settings":  content.SystemSettingsCommands,
-	}
-	for group, commands := range commandGroups {
+	for group, commands := range content.commandGroups() {
+		if _, ok := commands[defaultDesktopKey]; !ok {
+			return fmt.Errorf("missing default %s command", group)
+		}
 		for desktop, command := range commands {
-			if !knownDesktops[desktop] || len(command.Command) == 0 || strings.TrimSpace(command.Command[0]) == "" || strings.TrimSpace(command.Missing) == "" {
+			if (desktop != defaultDesktopKey && !knownDesktop(desktop)) || len(command.Command) == 0 ||
+				strings.TrimSpace(command.Command[0]) == "" || strings.TrimSpace(command.Missing) == "" {
 				return fmt.Errorf("invalid %s command for %q", group, desktop)
 			}
 		}
 	}
-	for desktop, actions := range content.DesktopActions {
-		if !knownDesktops[desktop] {
+	for desktop, desktopActions := range content.DesktopActions {
+		if !knownDesktop(desktop) {
 			return fmt.Errorf("invalid desktop action group %q", desktop)
 		}
-		for _, action := range actions {
+		for _, action := range desktopActions {
 			if strings.TrimSpace(action.Title) == "" || len(action.Command) == 0 || strings.TrimSpace(action.Command[0]) == "" {
 				return fmt.Errorf("invalid desktop action for %q", desktop)
 			}
 		}
 	}
 
-	linkGroups := [][]LinkCard{content.SupportLinks, content.ContributeLinks}
-	for _, links := range linkGroups {
+	for _, links := range [][]LinkCard{content.SupportLinks, content.ContributeLinks} {
 		for _, link := range links {
-			parsed, err := url.ParseRequestURI(link.URL)
-			if err != nil || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.Host == "" {
+			if !validURL(link.URL) {
 				return fmt.Errorf("invalid link URL %q", link.URL)
 			}
 		}
 	}
 
-	requiredUI := []struct {
-		name  string
-		value string
-	}{
-		{"Tagline", content.UI.Tagline},
-		{"ShowOnStartup", content.UI.ShowOnStartup},
-		{"Close", content.UI.Close},
-		{"DarkTheme", content.UI.DarkTheme},
-		{"WelcomeTitle", content.UI.WelcomeTitle},
-		{"WelcomeSubtitle", content.UI.WelcomeSubtitle},
-		{"GettingStarted", content.UI.GettingStarted},
-		{"SolusLinux", content.UI.SolusLinux},
-		{"EditionSuffix", content.UI.EditionSuffix},
-		{"CheckForUpdates", content.UI.CheckForUpdates},
-		{"CheckingUpdates", content.UI.CheckingUpdates},
-		{"UnableToCheckUpdates", content.UI.UnableToCheckUpdates},
-		{"SystemUpToDate", content.UI.SystemUpToDate},
-		{"OneUpdateAvailable", content.UI.OneUpdateAvailable},
-		{"UpdatesAvailable", content.UI.UpdatesAvailable},
-		{"NoDesktopSettings", content.UI.NoDesktopSettings},
-		{"OpenButton", content.UI.OpenButton},
-		{"NotInstalled", content.UI.NotInstalled},
-		{"LearnMoreButton", content.UI.LearnMoreButton},
-	}
-	for _, field := range requiredUI {
-		if strings.TrimSpace(field.value) == "" {
-			return fmt.Errorf("missing UI field %s", field.name)
+	ui := reflect.ValueOf(content.UI)
+	for i := range ui.NumField() {
+		if strings.TrimSpace(ui.Field(i).String()) == "" {
+			return fmt.Errorf("missing UI field %s", ui.Type().Field(i).Name)
 		}
 	}
-	if !strings.Contains(content.UI.UpdatesAvailable, "%d") {
-		return errors.New("UI.UpdatesAvailable must contain %d")
+	formats := []struct {
+		name, format string
+		sample       any
+	}{
+		{"NotInstalled", content.UI.NotInstalled, "application"},
+		{"MemoryFormat", content.UI.MemoryFormat, 1.5},
 	}
-	if strings.Contains(fmt.Sprintf(content.UI.UpdatesAvailable, 1), "%!") {
-		return errors.New("UI.UpdatesAvailable has invalid formatting")
-	}
-	if !strings.Contains(content.UI.NotInstalled, "%s") {
-		return errors.New("UI.NotInstalled must contain %s")
-	}
-	if strings.Contains(fmt.Sprintf(content.UI.NotInstalled, "application"), "%!") {
-		return errors.New("UI.NotInstalled has invalid formatting")
+	for _, f := range formats {
+		if !strings.Contains(f.format, "%") || strings.Contains(fmt.Sprintf(f.format, f.sample), "%!") {
+			return fmt.Errorf("UI.%s has invalid formatting", f.name)
+		}
 	}
 	return nil
 }
