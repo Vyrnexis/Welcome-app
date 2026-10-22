@@ -21,6 +21,8 @@
   "Update now": "Jetzt aktualisieren",
   "Copy system info": "Systeminfo kopieren",
   "Copied": "Kopiert",
+  "NVIDIA graphics detected": "NVIDIA-Grafik erkannt",
+  "Install driver": "Treiber installieren",
   "What's new in Solus": "Neues in Solus",
   "updates_available": {
     "one": "{{.Count}} Update verfügbar",

@@ -167,6 +167,14 @@ func TestValidateContent(t *testing.T) {
 				}
 			}
 		}},
+		{"internal action in configuration", func(c *AppContent) {
+			c.WelcomeCards = append([]WelcomeCard(nil), c.WelcomeCards...)
+			c.WelcomeCards[0].Action = "nvidia"
+		}},
+		{"empty driver command", func(c *AppContent) { c.Drivers.Command = nil }},
+		{"blank driver command", func(c *AppContent) { c.Drivers.Command = []string{" "} }},
+		{"unsafe driver URL", func(c *AppContent) { c.Drivers.URL = "file:///etc/passwd" }},
+		{"missing driver title", func(c *AppContent) { c.Drivers.Title = "" }},
 		{"unsafe URL", func(c *AppContent) {
 			c.SupportLinks = append([]LinkCard(nil), c.SupportLinks...)
 			c.SupportLinks[0].URL = "file:///etc/passwd"

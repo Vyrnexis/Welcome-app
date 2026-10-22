@@ -280,6 +280,15 @@ Title = "Donations"
 Body = "Support project infrastructure and ongoing work."
 URL = "https://getsol.us/contribute/donations"
 
+# Shown on the Welcome page when an NVIDIA GPU is present but the proprietary driver is not loaded.
+# Command is launched if installed; otherwise URL is opened.
+[Drivers]
+Title = "NVIDIA graphics detected"
+Body = "The proprietary NVIDIA driver can improve graphics performance and enable features such as CUDA and better gaming support."
+Button = "Install driver"
+Command = ["doflicky-ui"]
+URL = "https://help.getsol.us/docs/user/hardware/nvidia-gpu-drivers/"
+
 [UI]
 WindowTitle = "Solus Welcome"
 SidebarTitle = "Solus"

@@ -43,8 +43,8 @@ func (ui *welcomeUI) welcomePage() fyne.CanvasObject {
 	heroText := container.NewVBox(title, subtitle, layout.NewSpacer())
 	hero := responsiveGrid(360, 2, heroText, ui.systemCard())
 
-	cards := make([]fyne.CanvasObject, 0, len(ui.content.WelcomeCards))
-	for _, card := range ui.content.WelcomeCards {
+	cards := make([]fyne.CanvasObject, 0, len(ui.content.WelcomeCards)+1)
+	for _, card := range ui.welcomeCards() {
 		cards = append(cards, ui.welcomeCard(card))
 	}
 
@@ -55,6 +55,16 @@ func (ui *welcomeUI) welcomePage() fyne.CanvasObject {
 		responsiveGrid(260, 3, cards...),
 	)
 	return container.NewPadded(container.NewVScroll(maxWidth(page, 1180)))
+}
+
+// welcomeCards returns the configured cards, preceded by the NVIDIA driver card when it applies.
+func (ui *welcomeUI) welcomeCards() []WelcomeCard {
+	if !needsNvidiaDriver(ui.host.sysfs) {
+		return ui.content.WelcomeCards
+	}
+	d := ui.content.Drivers
+	nvidia := WelcomeCard{Title: d.Title, Body: d.Body, Button: d.Button, Action: "nvidia", URL: d.URL}
+	return append([]WelcomeCard{nvidia}, ui.content.WelcomeCards...)
 }
 
 // systemCard shows the desktop edition and system details with the update button.
