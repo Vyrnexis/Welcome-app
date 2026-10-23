@@ -29,9 +29,11 @@ type welcomeUI struct {
 	navButtons  map[string]*widget.Button
 	currentPage string
 	updates     *updateChecker
-	themeMode   themeMode
-	quit        func()
-	later       func(time.Duration, func()) // runs a function after a delay, off the UI goroutine
+	// welcomeScroll lets rebuilds after a card action keep the user's place instead of jumping to the top.
+	welcomeScroll *container.Scroll
+	themeMode     themeMode
+	quit          func()
+	later         func(time.Duration, func()) // runs a function after a delay, off the UI goroutine
 }
 
 func main() {
@@ -76,7 +78,16 @@ func newWelcomeUI(a fyne.App, w fyne.Window, content AppContent, desktop Desktop
 	ui.updates.onError = func(err error) {
 		dialog.ShowInformation(lang.L(content.UI.CheckForUpdates), ui.updates.errorText(err), w)
 	}
-	ui.rebuild = ui.render
+	ui.rebuild = func() {
+		var offset fyne.Position
+		if ui.welcomeScroll != nil {
+			offset = ui.welcomeScroll.Offset
+		}
+		ui.render()
+		if ui.welcomeScroll != nil {
+			ui.welcomeScroll.ScrollToOffset(offset)
+		}
+	}
 	a.Settings().SetTheme(newSolusTheme(ui.themeMode))
 	return ui
 }

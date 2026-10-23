@@ -63,7 +63,8 @@ func (ui *welcomeUI) welcomePage() fyne.CanvasObject {
 		progressRow,
 		responsiveGrid(260, 3, cards...),
 	)
-	return container.NewPadded(container.NewVScroll(maxWidth(page, 1180)))
+	ui.welcomeScroll = container.NewVScroll(maxWidth(page, 1180))
+	return container.NewPadded(ui.welcomeScroll)
 }
 
 // welcomeCards returns the configured cards, preceded by the NVIDIA driver card when it applies.

@@ -191,3 +191,18 @@ func TestNvidiaCardFirst(t *testing.T) {
 		t.Errorf("with the driver loaded: %d cards, want %d", len(got), configured)
 	}
 }
+
+// TestRebuildKeepsWelcomeScroll verifies marking a card done does not jump the page back to the top.
+func TestRebuildKeepsWelcomeScroll(t *testing.T) {
+	ui := newTestUI(t)
+	ui.window.SetContent(ui.buildLayout())
+	ui.window.Resize(fyne.NewSize(800, 400))
+	ui.selectPage("welcome")
+
+	ui.welcomeScroll.ScrollToOffset(fyne.NewPos(0, 150))
+	ui.rebuild()
+
+	if got := ui.welcomeScroll.Offset.Y; got != 150 {
+		t.Errorf("scroll offset after rebuild = %v, want 150", got)
+	}
+}
