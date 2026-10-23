@@ -33,7 +33,7 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo apt-get update -qq
-        sudo apt-get install -yq libgl1-mesa-dev xorg-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxxf86vm-dev libwayland-dev libxkbcommon-dev desktop-file-utils
+        sudo apt-get install -yq libgl1-mesa-dev xorg-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxxf86vm-dev libwayland-dev libxkbcommon-dev desktop-file-utils shellcheck
 
     - name: Verify Code Formatting
       run: |
@@ -43,14 +43,23 @@ jobs:
           exit 1
         fi
 
+    - name: Check Go Module Tidiness
+      run: go mod tidy -diff
+
+    - name: Lint Shell Scripts
+      run: shellcheck install.sh test/install_test.sh
+
+    - name: Validate Desktop Files
+      run: desktop-file-validate data/*.desktop
+
     - name: Run go vet
-      run: go vet -tags wayland ./...
+      run: go vet ./...
 
     - name: Run Tests
-      run: go test -race -tags wayland ./...
+      run: go test -race ./...
 
     - name: Build Application
-      run: go build -tags wayland -trimpath -ldflags="-s -w" -o bin/solus-welcome ./src
+      run: go build -trimpath -ldflags="-s -w" -o bin/solus-welcome ./src
 
     - name: Test Staged Installation
       run: |
@@ -80,29 +89,31 @@ jobs:
         name: solus-welcome
         path: release-bin
 
-    - name: Install Release Dependency
-      run: |
-        sudo apt-get update -qq
-        sudo apt-get install -yq upx
-        upx --version
-
     - name: Package Release Assets
       run: |
         chmod +x release-bin/solus-welcome
-        upx --best --lzma release-bin/solus-welcome
         ARCHIVE_NAME="solus-welcome-${{ github.ref_name }}-linux-x86_64.tar.gz"
         PACKAGE_DIR_NAME="solus-welcome-${{ github.ref_name }}"
         STAGING_DIR="$(mktemp -d)"
         PACKAGE_DIR="$STAGING_DIR/$PACKAGE_DIR_NAME"
-        mkdir -p "$PACKAGE_DIR/bin"
+        mkdir -p "$PACKAGE_DIR/bin" "$PACKAGE_DIR/data"
         cp release-bin/solus-welcome "$PACKAGE_DIR/bin/"
-        cp -r assets solus-welcome.desktop install.sh README.md "$PACKAGE_DIR/"
+        cp data/us.getsol.SolusWelcome.desktop "$PACKAGE_DIR/data/"
+        cp data/us.getsol.SolusWelcome-autostart.desktop "$PACKAGE_DIR/data/"
+        cp assets/logo.svg "$PACKAGE_DIR/data/us.getsol.SolusWelcome.svg"
+        cp install.sh README.md "$PACKAGE_DIR/"
+        if [ -f LICENSE ]; then
+          cp LICENSE "$PACKAGE_DIR/"
+        fi
         tar -czf "$ARCHIVE_NAME" -C "$STAGING_DIR" "$PACKAGE_DIR_NAME"
-        for required_path in bin/solus-welcome assets/config.toml install.sh README.md solus-welcome.desktop; do
+        for required_path in bin/solus-welcome data/us.getsol.SolusWelcome.desktop data/us.getsol.SolusWelcome-autostart.desktop data/us.getsol.SolusWelcome.svg install.sh README.md; do
           required_path="$PACKAGE_DIR_NAME/$required_path"
           tar -tzf "$ARCHIVE_NAME" "$required_path" >/dev/null
         done
-        for excluded_path in src go.mod go.sum; do
+        if [ -f LICENSE ]; then
+          tar -tzf "$ARCHIVE_NAME" "$PACKAGE_DIR_NAME/LICENSE" >/dev/null
+        fi
+        for excluded_path in src go.mod go.sum assets; do
           excluded_path="$PACKAGE_DIR_NAME/$excluded_path"
           if tar -tzf "$ARCHIVE_NAME" "$excluded_path" >/dev/null 2>&1; then
             echo "Unexpected source path in release archive: $excluded_path" >&2

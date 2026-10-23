@@ -5,11 +5,37 @@ import (
 	"os"
 	"runtime"
 	"strings"
+
+	"fyne.io/fyne/v2/lang"
 )
 
 type DesktopInfo struct {
 	Key  string
 	Name string
+}
+
+type desktopSpec struct {
+	key     string
+	name    string
+	markers []string
+}
+
+// desktops lists supported desktops in match priority order: Budgie sessions also advertise GNOME.
+var desktops = []desktopSpec{
+	{"kde", "KDE Plasma", []string{"kde", "plasma"}},
+	{"budgie", "Budgie", []string{"budgie"}},
+	{"gnome", "GNOME", []string{"gnome"}},
+	{"xfce", "Xfce", []string{"xfce"}},
+}
+
+// knownDesktop reports whether key identifies a supported desktop.
+func knownDesktop(key string) bool {
+	for _, spec := range desktops {
+		if spec.key == key {
+			return true
+		}
+	}
+	return false
 }
 
 // detectDesktop identifies the current desktop environment using standard Linux environment variables.
@@ -21,33 +47,29 @@ func detectDesktop() DesktopInfo {
 	}
 
 	for _, value := range values {
-		desktop := strings.ToLower(value)
-		switch {
-		case strings.Contains(desktop, "kde"), strings.Contains(desktop, "plasma"):
-			return DesktopInfo{Key: "kde", Name: "KDE Plasma"}
-		case strings.Contains(desktop, "budgie"):
-			return DesktopInfo{Key: "budgie", Name: "Budgie"}
-		case strings.Contains(desktop, "gnome"):
-			return DesktopInfo{Key: "gnome", Name: "GNOME"}
-		case strings.Contains(desktop, "xfce"), strings.Contains(desktop, "xfce4"):
-			return DesktopInfo{Key: "xfce", Name: "Xfce"}
+		value = strings.ToLower(value)
+		for _, spec := range desktops {
+			for _, marker := range spec.markers {
+				if strings.Contains(value, marker) {
+					return DesktopInfo{Key: spec.key, Name: spec.name}
+				}
+			}
 		}
 	}
 
-	return DesktopInfo{Key: "unknown", Name: "Unknown desktop"}
+	return DesktopInfo{Key: "unknown"}
 }
 
 // architectureLabel returns a human-readable string representation of the current system architecture.
-func architectureLabel() string {
+func architectureLabel(ui UIStrings) string {
 	switch runtime.GOARCH {
 	case "amd64", "arm64":
-		return "64-bit"
+		return lang.L(ui.Bits64)
 	default:
 		return runtime.GOARCH
 	}
 }
 
-// kernelVersion reads the running Linux kernel release string from the proc filesystem.
 func kernelVersion() string {
 	if data, err := os.ReadFile("/proc/sys/kernel/osrelease"); err == nil {
 		return strings.TrimSpace(string(data))
@@ -55,11 +77,11 @@ func kernelVersion() string {
 	return ""
 }
 
-// memoryLabel reads total physical RAM from /proc/meminfo and formats it into GiB.
-func memoryLabel() string {
+// memoryKiB reads total physical RAM from /proc/meminfo, or 0 when it cannot be determined.
+func memoryKiB() int64 {
 	data, err := os.ReadFile("/proc/meminfo")
 	if err != nil {
-		return ""
+		return 0
 	}
 	for _, line := range strings.Split(string(data), "\n") {
 		if strings.HasPrefix(line, "MemTotal:") {
@@ -67,25 +89,32 @@ func memoryLabel() string {
 			if len(fields) >= 2 {
 				var kb int64
 				if _, err := fmt.Sscanf(fields[1], "%d", &kb); err == nil && kb > 0 {
-					gib := float64(kb) / 1024 / 1024
-					return fmt.Sprintf("%.1f GiB RAM", gib)
+					return kb
 				}
 			}
 		}
+	}
+	return 0
+}
+
+// memoryLabel formats total physical RAM into GiB.
+func memoryLabel(ui UIStrings) string {
+	if kb := memoryKiB(); kb > 0 {
+		return fmt.Sprintf(lang.L(ui.MemoryFormat), float64(kb)/1024/1024)
 	}
 	return ""
 }
 
 // systemDetailsSummary formats architecture, kernel, and memory into a concise diagnostic string.
-func systemDetailsSummary() string {
+func systemDetailsSummary(ui UIStrings) string {
 	parts := make([]string, 0, 3)
-	if arch := architectureLabel(); arch != "" {
+	if arch := architectureLabel(ui); arch != "" {
 		parts = append(parts, arch)
 	}
 	if kernel := kernelVersion(); kernel != "" {
 		parts = append(parts, "Linux "+kernel)
 	}
-	if mem := memoryLabel(); mem != "" {
+	if mem := memoryLabel(ui); mem != "" {
 		parts = append(parts, mem)
 	}
 	return strings.Join(parts, " • ")

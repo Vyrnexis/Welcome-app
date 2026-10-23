@@ -1,217 +1,206 @@
 package main
 
 import (
-	"errors"
 	"maps"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
-// copyBaseConfig copies the project configuration into an isolated content test directory.
-func copyBaseConfig(t *testing.T, destination string) {
+// testContent loads the embedded configuration, ignoring any system override on the machine running the tests.
+func testContent(t *testing.T) AppContent {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join("..", "assets", "config.toml"))
-	if err != nil {
-		t.Fatalf("read project config: %v", err)
+	content, source, err := loadContent("")
+	if err != nil || source != "embedded" {
+		t.Fatalf("loadContent() = %q, %v", source, err)
 	}
-	if err := os.WriteFile(filepath.Join(destination, "config.toml"), data, 0o644); err != nil {
-		t.Fatalf("write base config: %v", err)
+	return content
+}
+
+func writeConfig(t *testing.T, content string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// TestLoadContentEmbedded verifies the embedded configuration is valid and used without an override.
+func TestLoadContentEmbedded(t *testing.T) {
+	content := testContent(t)
+	if label := content.NavLabel("welcome"); label != "Welcome" {
+		t.Errorf("NavLabel(welcome) = %q, want %q", label, "Welcome")
+	}
+	if label := content.NavLabel("unknown"); label != "unknown" {
+		t.Errorf("NavLabel(unknown) = %q, want the key", label)
+	}
+
+	missing := filepath.Join(t.TempDir(), "absent.toml")
+	if _, source, err := loadContent(missing); err != nil || source != "embedded" {
+		t.Errorf("loadContent(missing) = %q, %v; want embedded", source, err)
 	}
 }
 
-// TestGetSystemLocales verifies locale normalization and candidate ordering.
-func TestGetSystemLocales(t *testing.T) {
-	t.Setenv("LC_ALL", "")
-	t.Setenv("LC_MESSAGES", "")
-	tests := []struct {
-		name string
-		lang string
-		want []string
-	}{
-		{name: "regional locale", lang: "fr_CA.UTF-8", want: []string{"fr_CA", "fr"}},
-		{name: "simple locale", lang: "de.UTF-8", want: []string{"de"}},
-		{name: "locale with modifier", lang: "sr_RS@latin", want: []string{"sr_RS", "sr"}},
-		{name: "C locale", lang: "C", want: []string{"en"}},
-		{name: "C UTF-8 locale", lang: "C.UTF-8", want: []string{"en"}},
-		{name: "POSIX locale", lang: "POSIX", want: []string{"en"}},
-		{name: "empty locale", lang: "", want: []string{"en"}},
-	}
+// TestLoadContentOverride verifies a valid system override replaces the embedded configuration.
+func TestLoadContentOverride(t *testing.T) {
+	embedded := testContent(t)
+	override := strings.Replace(mustEmbeddedConfig(t), `SidebarTitle = "Solus"`, `SidebarTitle = "Custom"`, 1)
+	path := writeConfig(t, override)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("LANG", tt.lang)
-			got := getSystemLocales()
-			if len(got) != len(tt.want) {
-				t.Fatalf("getSystemLocales() = %v, want %v", got, tt.want)
+	content, source, err := loadContent(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if source != path || content.UI.SidebarTitle != "Custom" || embedded.UI.SidebarTitle != "Solus" {
+		t.Errorf("source=%q title=%q, want override applied", source, content.UI.SidebarTitle)
+	}
+}
+
+// TestLoadContentInvalidOverrideFallsBack verifies broken overrides are ignored in favour of the embedded configuration.
+func TestLoadContentInvalidOverrideFallsBack(t *testing.T) {
+	for name, body := range map[string]string{
+		"syntax":      "[UI\nbroken = [",
+		"unknown key": "Unknown = true\n",
+		"incomplete":  "[[NavItems]]\nKey = \"welcome\"\nLabel = \"Welcome\"\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			content, source, err := loadContent(writeConfig(t, body))
+			if err != nil {
+				t.Fatal(err)
 			}
-			for i := range got {
-				if got[i] != tt.want[i] {
-					t.Errorf("getSystemLocales()[%d] = %q, want %q", i, got[i], tt.want[i])
-				}
+			if source != "embedded" || content.UI.SidebarTitle != "Solus" {
+				t.Errorf("source = %q, want fallback to embedded", source)
 			}
 		})
 	}
 }
 
-// TestGetSystemLocalesPrecedence verifies LC_ALL and LC_MESSAGES override LANG.
-func TestGetSystemLocalesPrecedence(t *testing.T) {
-	t.Setenv("LANG", "de_DE.UTF-8")
-	t.Setenv("LC_MESSAGES", "fr_FR.UTF-8")
-	t.Setenv("LC_ALL", "es_ES.UTF-8")
-	if got := getSystemLocales()[0]; got != "es_ES" {
-		t.Errorf("getSystemLocales()[0] = %q, want %q", got, "es_ES")
+func mustEmbeddedConfig(t *testing.T) string {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("..", "assets", "config.toml"))
+	if err != nil {
+		t.Fatal(err)
 	}
+	return string(data)
+}
 
-	t.Setenv("LC_ALL", "")
-	if got := getSystemLocales()[0]; got != "fr_FR" {
-		t.Errorf("getSystemLocales()[0] = %q, want %q", got, "fr_FR")
+// TestDecodeContentRejectsUnknownKeys verifies stray keys are fatal for a document.
+func TestDecodeContentRejectsUnknownKeys(t *testing.T) {
+	if _, err := decodeContent([]byte("Unknown = true\n")); err == nil {
+		t.Fatal("decodeContent() error = nil, want error")
 	}
 }
 
-// TestLoadContent verifies base configuration loading.
-func TestLoadContent(t *testing.T) {
-	t.Setenv("LC_ALL", "")
-	t.Setenv("LC_MESSAGES", "")
-	t.Setenv("LANG", "en_US.UTF-8")
-	originalContent := Content
-	t.Cleanup(func() { Content = originalContent })
-
-	if err := LoadContent(".."); err != nil {
-		t.Fatalf("LoadContent() error = %v", err)
+// TestRegistriesMatchConfiguration verifies every configured page and action resolves through the registries.
+func TestRegistriesMatchConfiguration(t *testing.T) {
+	content := testContent(t)
+	for _, item := range content.NavItems {
+		spec, ok := pages[item.Key]
+		if !ok || spec.icon == nil || spec.build == nil {
+			t.Errorf("page %q is incomplete in the registry", item.Key)
+		}
 	}
-	if label := Content.NavLabel("welcome", "Fallback"); label != "Welcome" {
-		t.Errorf("NavLabel(welcome) = %q, want %q", label, "Welcome")
+	for _, card := range content.WelcomeCards {
+		spec, ok := actions[card.Action]
+		if !ok || spec.icon == nil || spec.run == nil {
+			t.Errorf("action %q is incomplete in the registry", card.Action)
+		}
 	}
-	if label := Content.NavLabel("unknown", "Fallback"); label != "Fallback" {
-		t.Errorf("NavLabel(unknown) = %q, want %q", label, "Fallback")
-	}
-	if title := Content.WelcomeCardTitle("updates", "Fallback"); title != "Update your system" {
-		t.Errorf("WelcomeCardTitle(updates) = %q, want %q", title, "Update your system")
-	}
-	if title := Content.WelcomeCardTitle("missing", "Fallback"); title != "Fallback" {
-		t.Errorf("WelcomeCardTitle(missing) = %q, want %q", title, "Fallback")
+	for name, spec := range actions {
+		if spec.icon == nil || spec.run == nil {
+			t.Errorf("action %q is incomplete", name)
+		}
 	}
 }
 
-// TestLoadContentLocalizedOverride verifies that regional and base locale files override configuration.
-func TestLoadContentLocalizedOverride(t *testing.T) {
-	t.Setenv("LC_ALL", "")
-	t.Setenv("LC_MESSAGES", "")
-	t.Setenv("LANG", "fr_CA.UTF-8")
-	originalContent := Content
-	t.Cleanup(func() { Content = originalContent })
-	tmpDir := t.TempDir()
-	localesDir := filepath.Join(tmpDir, "assets", "locales")
-	if err := os.MkdirAll(localesDir, 0o755); err != nil {
-		t.Fatalf("create locales directory: %v", err)
+// TestCommandFor verifies desktop lookups use the configured default for unknown desktops.
+func TestCommandFor(t *testing.T) {
+	content := testContent(t)
+	if got := commandFor(content.SoftwareCommands, "budgie").Command[0]; got != "gnome-software" {
+		t.Errorf("budgie software command = %q, want gnome-software", got)
 	}
-
-	copyBaseConfig(t, filepath.Join(tmpDir, "assets"))
-	localizedConfig := []byte("[UI]\nTagline = \"Bienvenue\"\n")
-	if err := os.WriteFile(filepath.Join(localesDir, "fr.toml"), localizedConfig, 0o644); err != nil {
-		t.Fatalf("write localized config: %v", err)
+	if got := commandFor(content.SystemSettingsCommands, "gnome").Command; len(got) != 1 || got[0] != "gnome-control-center" {
+		t.Errorf("gnome settings command = %v, want plain gnome-control-center", got)
 	}
-
-	if err := LoadContent(tmpDir); err != nil {
-		t.Fatalf("LoadContent() error = %v", err)
-	}
-	if Content.UI.Tagline != "Bienvenue" {
-		t.Errorf("Content.UI.Tagline = %q, want %q", Content.UI.Tagline, "Bienvenue")
-	}
-	if Content.UI.Close != "Close" {
-		t.Errorf("Content.UI.Close = %q, want %q", Content.UI.Close, "Close")
-	}
-}
-
-// TestLoadContentMalformedRegionalLocale verifies errors are reported while a base-language fallback is loaded.
-func TestLoadContentMalformedRegionalLocale(t *testing.T) {
-	t.Setenv("LC_ALL", "")
-	t.Setenv("LC_MESSAGES", "")
-	t.Setenv("LANG", "fr_CA.UTF-8")
-	originalContent := Content
-	t.Cleanup(func() { Content = originalContent })
-	tmpDir := t.TempDir()
-	localesDir := filepath.Join(tmpDir, "assets", "locales")
-	if err := os.MkdirAll(localesDir, 0o755); err != nil {
-		t.Fatalf("create locales directory: %v", err)
-	}
-
-	copyBaseConfig(t, filepath.Join(tmpDir, "assets"))
-	malformedConfig := []byte("[UI\nthis is invalid toml = [unclosed\n")
-	localizedConfig := []byte("[UI]\nTagline = \"Bienvenue\"\n")
-	if err := os.WriteFile(filepath.Join(localesDir, "fr_CA.toml"), malformedConfig, 0o644); err != nil {
-		t.Fatalf("write malformed config: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(localesDir, "fr.toml"), localizedConfig, 0o644); err != nil {
-		t.Fatalf("write fallback locale: %v", err)
-	}
-
-	if err := LoadContent(tmpDir); err == nil {
-		t.Fatal("LoadContent() error = nil, want malformed regional locale error")
-	}
-	if Content.UI.Tagline != "Bienvenue" {
-		t.Errorf("Content.UI.Tagline = %q, want language fallback %q", Content.UI.Tagline, "Bienvenue")
-	}
-	if Content.UI.Close != "Close" {
-		t.Errorf("Content.UI.Close = %q, want base fallback %q", Content.UI.Close, "Close")
-	}
-}
-
-// TestLoadContentRejectsInvalidBase verifies malformed base configuration is marked as fatal.
-func TestLoadContentRejectsInvalidBase(t *testing.T) {
-	t.Setenv("LC_ALL", "")
-	t.Setenv("LC_MESSAGES", "")
-	t.Setenv("LANG", "en_US.UTF-8")
-	tmpDir := t.TempDir()
-	assetsDir := filepath.Join(tmpDir, "assets")
-	if err := os.MkdirAll(assetsDir, 0o755); err != nil {
-		t.Fatalf("create assets directory: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(assetsDir, "config.toml"), []byte("Unknown = true\n"), 0o644); err != nil {
-		t.Fatalf("write invalid config: %v", err)
-	}
-
-	if err := LoadContent(tmpDir); !errors.Is(err, errBaseContent) {
-		t.Fatalf("LoadContent() error = %v, want fatal base content error", err)
+	if got := commandFor(content.SoftwareCommands, "unknown"); got.Missing != content.SoftwareCommands[defaultDesktopKey].Missing {
+		t.Errorf("unknown desktop did not use the default entry: %v", got)
 	}
 }
 
 // TestValidateContent verifies unsafe or unusable configuration values are rejected.
 func TestValidateContent(t *testing.T) {
-	t.Setenv("LC_ALL", "")
-	t.Setenv("LC_MESSAGES", "")
-	t.Setenv("LANG", "en_US.UTF-8")
-	originalContent := Content
-	t.Cleanup(func() { Content = originalContent })
-	if err := LoadContent(".."); err != nil {
-		t.Fatalf("LoadContent() error = %v", err)
+	base := testContent(t)
+	if err := validateContent(base); err != nil {
+		t.Fatalf("validateContent(base) = %v", err)
 	}
-	base := Content
 
 	tests := []struct {
 		name   string
 		change func(*AppContent)
 	}{
-		{"unknown action", func(content *AppContent) {
-			content.WelcomeCards = append([]WelcomeCard(nil), content.WelcomeCards...)
-			content.WelcomeCards[0].Action = "unknown"
+		{"unknown action", func(c *AppContent) {
+			c.WelcomeCards = append([]WelcomeCard(nil), c.WelcomeCards...)
+			c.WelcomeCards[0].Action = "unknown"
 		}},
-		{"unsafe URL", func(content *AppContent) {
-			content.SupportLinks = append([]LinkCard(nil), content.SupportLinks...)
-			content.SupportLinks[0].URL = "file:///etc/passwd"
+		{"unknown page", func(c *AppContent) {
+			c.NavItems = append([]NavItem(nil), c.NavItems...)
+			c.NavItems[0].Key = "unknown"
 		}},
-		{"missing format placeholder", func(content *AppContent) {
-			content.UI.UpdatesAvailable = "Updates available"
+		{"duplicate page", func(c *AppContent) {
+			c.NavItems = append(append([]NavItem(nil), c.NavItems...), c.NavItems[0])
 		}},
-		{"invalid format placeholder", func(content *AppContent) {
-			content.UI.UpdatesAvailable = "%d updates for %s"
+		{"url action without url", func(c *AppContent) {
+			c.WelcomeCards = append([]WelcomeCard(nil), c.WelcomeCards...)
+			for i := range c.WelcomeCards {
+				if c.WelcomeCards[i].Action == "learn" {
+					c.WelcomeCards[i].URL = ""
+				}
+			}
 		}},
-		{"empty command", func(content *AppContent) {
-			content.SoftwareCommands = maps.Clone(content.SoftwareCommands)
-			command := content.SoftwareCommands["gnome"]
+		{"unsafe action url", func(c *AppContent) {
+			c.WelcomeCards = append([]WelcomeCard(nil), c.WelcomeCards...)
+			for i := range c.WelcomeCards {
+				if c.WelcomeCards[i].Action == "donate" {
+					c.WelcomeCards[i].URL = "file:///etc/passwd"
+				}
+			}
+		}},
+		{"internal action in configuration", func(c *AppContent) {
+			c.WelcomeCards = append([]WelcomeCard(nil), c.WelcomeCards...)
+			c.WelcomeCards[0].Action = "nvidia"
+		}},
+		{"empty driver command", func(c *AppContent) { c.Drivers.Command = nil }},
+		{"blank driver command", func(c *AppContent) { c.Drivers.Command = []string{" "} }},
+		{"unsafe driver URL", func(c *AppContent) { c.Drivers.URL = "file:///etc/passwd" }},
+		{"missing driver title", func(c *AppContent) { c.Drivers.Title = "" }},
+		{"unsafe URL", func(c *AppContent) {
+			c.SupportLinks = append([]LinkCard(nil), c.SupportLinks...)
+			c.SupportLinks[0].URL = "file:///etc/passwd"
+		}},
+		{"missing UI field", func(c *AppContent) { c.UI.SidebarTitle = " " }},
+		{"missing window title", func(c *AppContent) { c.UI.WindowTitle = "" }},
+		{"missing format placeholder", func(c *AppContent) { c.UI.NotInstalled = "not installed" }},
+		{"invalid format placeholder", func(c *AppContent) { c.UI.NotInstalled = "%d and %s" }},
+		{"invalid memory format", func(c *AppContent) { c.UI.MemoryFormat = "%s %s" }},
+		{"empty command", func(c *AppContent) {
+			c.SoftwareCommands = maps.Clone(c.SoftwareCommands)
+			command := c.SoftwareCommands["gnome"]
 			command.Command = nil
-			content.SoftwareCommands["gnome"] = command
+			c.SoftwareCommands["gnome"] = command
+		}},
+		{"missing default command", func(c *AppContent) {
+			c.CustomiseCommands = maps.Clone(c.CustomiseCommands)
+			delete(c.CustomiseCommands, defaultDesktopKey)
+		}},
+		{"unknown desktop command", func(c *AppContent) {
+			c.SoftwareCommands = maps.Clone(c.SoftwareCommands)
+			c.SoftwareCommands["tilingwm"] = c.SoftwareCommands["gnome"]
+		}},
+		{"unknown desktop actions", func(c *AppContent) {
+			c.DesktopActions = maps.Clone(c.DesktopActions)
+			c.DesktopActions["tilingwm"] = c.DesktopActions["gnome"]
 		}},
 	}
 

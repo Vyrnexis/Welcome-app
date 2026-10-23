@@ -1,0 +1,10 @@
+{
+  "updates_available": {
+    "one": "{{.Count}} update available",
+    "other": "{{.Count}} updates available"
+  },
+  "getting_started_progress": {
+    "one": "{{.Count}} of {{.Total}} done",
+    "other": "{{.Count}} of {{.Total}} done"
+  }
+}

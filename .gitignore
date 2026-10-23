@@ -13,3 +13,6 @@
 
 # AI Assistant metadata (do not commit)
 .agents/
+
+# Build output
+bin/

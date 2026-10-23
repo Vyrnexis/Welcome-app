@@ -14,14 +14,18 @@ The application is written in Go with the [Fyne](https://fyne.io/) GUI toolkit a
 
 - Detects the active Budgie, GNOME, KDE Plasma, or Xfce desktop session.
 - Displays the desktop edition, architecture, Linux kernel, and installed memory.
+- Shows the installed Solus release (for example "Solus 4.7 Endurance") from `/etc/os-release`.
+- Copies a plain-text system report (OS, desktop, kernel, CPU, memory, GPU and driver) to the clipboard for support requests.
 - Checks for available `eopkg` upgrades without blocking the interface.
 - Opens the appropriate software centre, appearance tools, and system settings for the active desktop.
+- Offers an NVIDIA driver helper when an NVIDIA GPU is present without the proprietary driver.
+- Tracks getting-started progress with checkmarks on completed cards and a reset button.
 - Provides direct links to Solus documentation, support channels, contribution guides, and donations.
-- Manages the per-user desktop autostart entry.
-- Includes light and dark application themes.
-- Loads navigation, actions, links, and interface text from TOML configuration.
-- Supports regional and base-language translation fallbacks.
-- Installs from a release binary or builds an optimized binary from source.
+- Shown on first login via system autostart, with the option for users to opt out.
+- Theme follows system settings with manual Light and Dark mode overrides.
+- Embeds all runtime assets, icons, and translations directly into the binary.
+- Regional and base-language translation fallbacks using Fyne i18n.
+- Installs from a release binary archive or compiles from source.
 
 ## Keyboard shortcuts
 
@@ -31,13 +35,13 @@ The application is written in Go with the [Fyne](https://fyne.io/) GUI toolkit a
 | `F2` | Open Customise |
 | `F3` | Open Support |
 | `F4` | Open Contribute |
-| `Esc` | Close the application |
+| `Ctrl+Q` | Quit the application |
 
 ## Installation
 
 ### Install a published release
 
-Download the Linux x86-64 archive from the [Releases page](https://github.com/Vyrnexis/welcome-app/releases). This is the only file required to install Solus Welcome.
+Download the Linux x86-64 archive from the [Releases page](https://github.com/Vyrnexis/welcome-app/releases). This archive contains the precompiled binary, desktop entries, app icon, and installer script.
 
 The optional `checksums.txt` release asset can verify the archive before extraction when both files are in the same directory:
 
@@ -45,44 +49,42 @@ The optional `checksums.txt` release asset can verify the archive before extract
 sha256sum --check checksums.txt
 ```
 
-The archive contains a versioned top-level directory. Extract it, enter that directory, and run the installer:
+Extract the archive, enter the extracted directory, and run the installer:
 
 ```bash
-tar -xzf solus-welcome-v0.1.2-linux-x86_64.tar.gz
-cd solus-welcome-v0.1.2
+tar -xzf solus-welcome-v0.2.0-linux-x86_64.tar.gz
+cd solus-welcome-v0.2.0
 ./install.sh
 ```
 
-The binary release does not contain source code. Its installer detects the packaged binary, installs it without presenting a build menu, and requests `sudo` only when system permissions are required.
-
-GitHub separately provides automatic “Source code” archives for developers. Those downloads are not required for end-user installation.
+In release archives without source files, `./install.sh` automatically uses the prebuilt binary (`--prebuilt`).
 
 ### Install from a repository checkout
+
+Release binaries are not committed to git. To install from a git clone, compile and install from source:
 
 ```bash
 git clone https://github.com/Vyrnexis/welcome-app.git
 cd welcome-app
-./install.sh --build
+./install.sh
 ```
 
-Use `./install.sh --prebuilt` instead when installing the optimized binary already stored in `bin/solus-welcome`.
+In checkouts containing source files, `./install.sh` defaults to compiling from source (`--build`). You can also specify `--build` or `--prebuilt` explicitly.
 
-Repository and source checkouts containing both `bin/solus-welcome` and `src/` present an interactive choice when `./install.sh` is run without an option. A source-only checkout automatically selects the build mode.
+### Custom prefix and unprivileged installation
 
-### Installation paths
+By default, the installer targets `/usr` and requests `sudo` only when required to write to target directories.
 
-The default installation uses `/usr` and places files under:
-
-- `/usr/bin/solus-welcome`
-- `/usr/share/solus-welcome/`
-- `/usr/share/applications/solus-welcome.desktop`
-
-The installer requests `sudo` only when installing directly into the system and the current process is not root.
-
-An alternate absolute prefix is supported:
+To install into a user directory without `sudo`, provide a custom `PREFIX`:
 
 ```bash
-PREFIX=/opt/solus-welcome ./install.sh --prebuilt
+PREFIX="$HOME/.local" ./install.sh
+```
+
+An alternate absolute prefix such as `/opt` is also supported:
+
+```bash
+PREFIX=/opt/solus-welcome ./install.sh
 ```
 
 Packagers can stage an installation without `sudo` by setting `DESTDIR`:
@@ -91,11 +93,40 @@ Packagers can stage an installation without `sudo` by setting `DESTDIR`:
 DESTDIR=/tmp/solus-welcome-package PREFIX=/usr ./install.sh --prebuilt
 ```
 
-The generated desktop entry and runtime asset discovery follow the selected prefix.
+When `PREFIX` is not `/usr`, desktop entry `Exec` paths are automatically rewritten to the absolute binary path (`$PREFIX/bin/solus-welcome`).
+
+### Uninstalling
+
+To uninstall Solus Welcome and remove installed desktop entries, icons, and autostart files:
+
+```bash
+./install.sh --uninstall
+```
+
+If Solus Welcome was installed with a custom `PREFIX` or `DESTDIR`, pass the same variables when uninstalling:
+
+```bash
+PREFIX="$HOME/.local" ./install.sh --uninstall
+```
+
+### Distribution packaging
+
+A draft packaging recipe for Solus (`ypkg` / `solbuild`) is provided in [`packaging/package.yml`](packaging/package.yml). See [`packaging/README.md`](packaging/README.md) for packager instructions.
+
+### Installation paths
+
+The default installation uses `/usr` and installs the following files:
+
+- `/usr/bin/solus-welcome`
+- `/usr/share/applications/us.getsol.SolusWelcome.desktop`
+- `/usr/share/icons/hicolor/scalable/apps/us.getsol.SolusWelcome.svg`
+- `/etc/xdg/autostart/us.getsol.SolusWelcome.desktop`
+
+The installer requests `sudo` only when writing to directories that require elevated permissions (evaluated per target file).
 
 ## Build requirements
 
-Installing a prebuilt release does not require the Go toolchain. Building from source requires:
+Building from source requires:
 
 - Go at the version declared in `go.mod`.
 - A C compiler and development tools.
@@ -120,72 +151,45 @@ Format, analyze, and test the project:
 ```bash
 gofmt -s -w .
 go vet ./...
-go test -v -race -tags wayland ./...
+go test -v -race ./...
 ./test/install_test.sh
 ```
 
-Build the fully stripped Wayland release binary:
+Build the stripped binary:
 
 ```bash
 mkdir -p bin
-go build -tags wayland -trimpath -ldflags="-s -w" -o bin/solus-welcome ./src
+go build -trimpath -ldflags="-s -w" -o bin/solus-welcome ./src
 ```
-
-Create the optional UPX/LZMA-compressed variant:
-
-```bash
-cp bin/solus-welcome bin/solus-welcome-upx-compressed
-upx --best --lzma bin/solus-welcome-upx-compressed
-```
-
-## Configuration
-
-The base configuration is [assets/config.toml](assets/config.toml). It defines:
-
-- Sidebar navigation and welcome cards.
-- Desktop-specific software and settings commands.
-- Support and contribution links.
-- User-interface text and format strings.
-
-Installed systems load the file from the selected prefix under `share/solus-welcome/assets/config.toml`. Changes take effect the next time the application starts; recompilation is not required.
-
-Commands in this file are executed as argument arrays rather than being concatenated into a shell command. Preserve `%d` and `%s` placeholders when editing translated format strings.
 
 ## Translations
 
-Translations live in `assets/locales/` as TOML overrides. Locale matching tries a regional file first, then its base language, and finally retains the English values from `assets/config.toml`.
-
-For example, `pt_BR.UTF-8` is resolved in this order:
-
-1. `assets/locales/pt_BR.toml`
-2. `assets/locales/pt.toml`
-3. `assets/config.toml`
-
-Malformed regional translations are reported while the loader continues to a valid base-language fallback. See the [translation guide](assets/locales/README.md) for naming rules and an example.
+Translations live in `assets/translations/` as JSON files using [Fyne's i18n](https://fyne.io/) system. All translations are embedded directly into the binary at build time. See the [translation guide](assets/translations/README.md) for details on contributing translations.
 
 ## Project layout
 
 | Path | Purpose |
 | --- | --- |
 | `src/` | Application source and Go tests |
-| `assets/config.toml` | Base content and desktop command configuration |
-| `assets/locales/` | Translation overrides and translation documentation |
-| `assets/*.svg` | Solus and desktop-environment artwork |
-| `bin/` | Optimized release binaries |
-| `test/install_test.sh` | Default-prefix and custom-prefix staged installer tests |
-| `install.sh` | Interactive and non-interactive installer |
+| `assets/` | Artwork, application logo, and translations |
+| `data/` | Desktop application and autostart entries |
+| `packaging/` | Solus package recipe and packaging documentation |
+| `test/install_test.sh` | Staged installer and uninstaller tests |
+| `install.sh` | CLI installer and uninstaller |
 | `.github/workflows/ci.yml` | Formatting, analysis, tests, build, packaging, and releases |
 
 ## CI and releases
 
-Every push to `main` and every pull request targeting `main` runs formatting validation, `go vet`, race-enabled Go tests, the stripped Wayland build, and staged installer tests.
+Every push to `main` and every pull request targeting `main` runs formatting validation, module tidiness check, shell linting, desktop file validation, `go vet`, race-enabled Go tests, application build, and staged installer tests.
 
-Tags beginning with `v` run a separate release job with repository write permission. That job installs and verifies UPX, compresses the tested build artifact, creates a binary-only archive under a versioned top-level directory, verifies the archive contents, generates a SHA-256 checksum, and publishes the GitHub release.
-
-GitHub automatically adds separate source-code ZIP and tar archives to each release. End users should select the named `solus-welcome-<version>-linux-x86_64.tar.gz` asset instead.
+Tags beginning with `v` run a separate release job with repository write permission. That job packages the tested build artifact, desktop entries, app icon, installer script, and documentation into a release archive under a versioned top-level directory, verifies archive paths, generates a SHA-256 checksum, and publishes the GitHub release.
 
 ## Contributing
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting code. Translation-only contributions should follow [assets/locales/README.md](assets/locales/README.md).
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting code. Translation contributions should follow [assets/translations/README.md](assets/translations/README.md).
 
 Use Conventional Commits for commit messages, keep functions documented, and do not commit changes that fail formatting, analysis, race tests, or installer tests.
+
+## License
+
+Solus Welcome is released under the [MIT License](LICENSE).
