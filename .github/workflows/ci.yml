@@ -53,13 +53,20 @@ jobs:
       run: desktop-file-validate data/*.desktop
 
     - name: Run go vet
-      run: go vet ./...
+      run: |
+        go vet ./...
+        go vet -tags wayland ./...
 
     - name: Run Tests
       run: go test -race ./...
 
+    # GLFW supports one windowing system per binary, so both backends are built and released.
     - name: Build Application
-      run: go build -trimpath -ldflags="-s -w" -o bin/solus-welcome ./src
+      run: |
+        go build -trimpath -ldflags="-s -w" -o bin/solus-welcome ./src
+        go build -tags wayland -trimpath -ldflags="-s -w" -o dist/wayland/solus-welcome ./src
+        mkdir -p dist/x11
+        cp bin/solus-welcome dist/x11/solus-welcome
 
     - name: Test Staged Installation
       run: |
@@ -71,7 +78,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: solus-welcome
-        path: bin/solus-welcome
+        path: dist/
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -91,44 +98,39 @@ jobs:
 
     - name: Package Release Assets
       run: |
-        chmod +x release-bin/solus-welcome
-        ARCHIVE_NAME="solus-welcome-${{ github.ref_name }}-linux-x86_64.tar.gz"
         PACKAGE_DIR_NAME="solus-welcome-${{ github.ref_name }}"
-        STAGING_DIR="$(mktemp -d)"
-        PACKAGE_DIR="$STAGING_DIR/$PACKAGE_DIR_NAME"
-        mkdir -p "$PACKAGE_DIR/bin" "$PACKAGE_DIR/data"
-        cp release-bin/solus-welcome "$PACKAGE_DIR/bin/"
-        cp data/us.getsol.SolusWelcome.desktop "$PACKAGE_DIR/data/"
-        cp data/us.getsol.SolusWelcome-autostart.desktop "$PACKAGE_DIR/data/"
-        cp assets/logo.svg "$PACKAGE_DIR/data/us.getsol.SolusWelcome.svg"
-        cp install.sh README.md "$PACKAGE_DIR/"
-        if [ -f LICENSE ]; then
-          cp LICENSE "$PACKAGE_DIR/"
-        fi
-        tar -czf "$ARCHIVE_NAME" -C "$STAGING_DIR" "$PACKAGE_DIR_NAME"
-        for required_path in bin/solus-welcome data/us.getsol.SolusWelcome.desktop data/us.getsol.SolusWelcome-autostart.desktop data/us.getsol.SolusWelcome.svg install.sh README.md; do
-          required_path="$PACKAGE_DIR_NAME/$required_path"
-          tar -tzf "$ARCHIVE_NAME" "$required_path" >/dev/null
+        : > checksums.txt
+        for backend in x11 wayland; do
+          ARCHIVE_NAME="solus-welcome-${{ github.ref_name }}-linux-x86_64-$backend.tar.gz"
+          STAGING_DIR="$(mktemp -d)"
+          PACKAGE_DIR="$STAGING_DIR/$PACKAGE_DIR_NAME"
+          mkdir -p "$PACKAGE_DIR/bin" "$PACKAGE_DIR/data"
+          install -m755 "release-bin/$backend/solus-welcome" "$PACKAGE_DIR/bin/solus-welcome"
+          cp data/us.getsol.SolusWelcome.desktop "$PACKAGE_DIR/data/"
+          cp data/us.getsol.SolusWelcome-autostart.desktop "$PACKAGE_DIR/data/"
+          cp assets/logo.svg "$PACKAGE_DIR/data/us.getsol.SolusWelcome.svg"
+          cp install.sh README.md LICENSE "$PACKAGE_DIR/"
+          tar -czf "$ARCHIVE_NAME" -C "$STAGING_DIR" "$PACKAGE_DIR_NAME"
+          for required_path in bin/solus-welcome data/us.getsol.SolusWelcome.desktop data/us.getsol.SolusWelcome-autostart.desktop data/us.getsol.SolusWelcome.svg install.sh README.md LICENSE; do
+            tar -tzf "$ARCHIVE_NAME" "$PACKAGE_DIR_NAME/$required_path" >/dev/null
+          done
+          for excluded_path in src go.mod go.sum assets; do
+            if tar -tzf "$ARCHIVE_NAME" "$PACKAGE_DIR_NAME/$excluded_path" >/dev/null 2>&1; then
+              echo "Unexpected source path in release archive: $excluded_path" >&2
+              exit 1
+            fi
+          done
+          rm -rf "$STAGING_DIR"
+          sha256sum "$ARCHIVE_NAME" >> checksums.txt
         done
-        if [ -f LICENSE ]; then
-          tar -tzf "$ARCHIVE_NAME" "$PACKAGE_DIR_NAME/LICENSE" >/dev/null
-        fi
-        for excluded_path in src go.mod go.sum assets; do
-          excluded_path="$PACKAGE_DIR_NAME/$excluded_path"
-          if tar -tzf "$ARCHIVE_NAME" "$excluded_path" >/dev/null 2>&1; then
-            echo "Unexpected source path in release archive: $excluded_path" >&2
-            exit 1
-          fi
-        done
-        rm -rf "$STAGING_DIR"
-        sha256sum "$ARCHIVE_NAME" > checksums.txt
 
     - name: Create GitHub Release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         gh release create "${{ github.ref_name }}" \
-          "solus-welcome-${{ github.ref_name }}-linux-x86_64.tar.gz" \
+          "solus-welcome-${{ github.ref_name }}-linux-x86_64-x11.tar.gz" \
+          "solus-welcome-${{ github.ref_name }}-linux-x86_64-wayland.tar.gz" \
           "checksums.txt" \
           --title "Solus Welcome ${{ github.ref_name }}" \
           --generate-notes

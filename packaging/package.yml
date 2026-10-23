@@ -21,6 +21,13 @@ builddeps  :
     - pkgconfig(xinerama)
     - pkgconfig(xrandr)
     - pkgconfig(xxf86vm)
+    # Only needed for a "-tags wayland" build:
+    # - pkgconfig(wayland-client)
+    # - pkgconfig(wayland-cursor)
+    # - pkgconfig(wayland-egl)
+    # - pkgconfig(xkbcommon)
+# Fyne's GLFW backend is fixed at compile time. The default X11 build runs on every edition (Wayland sessions
+# use XWayland); add "-tags wayland" for a native Wayland build, which cannot start in X11 sessions like Xfce.
 build      : |
     go build -trimpath -ldflags="-s -w" -o solus-welcome ./src
 install    : |
