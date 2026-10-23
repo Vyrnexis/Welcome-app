@@ -4,7 +4,7 @@ release    : 1
 source     :
     - https://github.com/Vyrnexis/welcome-app/archive/refs/tags/v0.2.0.tar.gz : # TODO: Replace with sha256 hash after tagging v0.2.0
 homepage   : https://github.com/Vyrnexis/welcome-app
-license    : # TODO: Specify license (no LICENSE file in repository)
+license    : MIT
 component  : desktop
 summary    : Welcome and first-run setup for Solus
 description: |

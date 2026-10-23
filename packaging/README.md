@@ -17,7 +17,6 @@ This directory contains `package.yml`, the recipe for building `solus-welcome` a
 3. **Update `package.yml`**:
    - Replace the comment placeholder next to the archive URL with the computed SHA-256 hash.
    - Update `version` and `release` if packaging a new version.
-   - Verify license field when a `LICENSE` file is committed.
 
 4. **Build with `solbuild`**:
    In a Solus packaging environment:

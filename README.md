@@ -189,3 +189,7 @@ Tags beginning with `v` run a separate release job with repository write permiss
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting code. Translation contributions should follow [assets/translations/README.md](assets/translations/README.md).
 
 Use Conventional Commits for commit messages, keep functions documented, and do not commit changes that fail formatting, analysis, race tests, or installer tests.
+
+## License
+
+Solus Welcome is released under the [MIT License](LICENSE).
