@@ -2,7 +2,7 @@ name       : solus-welcome
 version    : 0.2.0
 release    : 1
 source     :
-    - https://github.com/Vyrnexis/welcome-app/archive/refs/tags/v0.2.0.tar.gz : # TODO: Replace with sha256 hash after tagging v0.2.0
+    - https://github.com/Vyrnexis/welcome-app/archive/refs/tags/v0.2.0.tar.gz : d69a7427fff49e93f3e98584efcdeb7ca02d287753a18d254fda48ecbaf6e00d
 homepage   : https://github.com/Vyrnexis/welcome-app
 license    : MIT
 component  : desktop
