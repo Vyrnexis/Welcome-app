@@ -20,9 +20,21 @@ if [[ "$SYSCONFDIR" != /* || "$SYSCONFDIR" == *[$'\n\r\t ']* ]]; then
 fi
 SYSCONFDIR="${SYSCONFDIR%/}"
 
+# BACKEND picks the windowing system compiled into a source build. GLFW, which Fyne uses, supports only one per
+# binary: x11 also runs on Wayland sessions through XWayland, while wayland is native but cannot start on X11.
+BACKEND="${BACKEND:-x11}"
+case "$BACKEND" in
+  x11) build_tags=() ;;
+  wayland) build_tags=(-tags wayland) ;;
+  *)
+    echo "Error: BACKEND must be x11 or wayland." >&2
+    exit 1
+    ;;
+esac
+
 # usage prints the supported non-interactive installation and uninstallation modes.
 usage() {
-  echo "Usage: $0 [--build|-b|--prebuilt|-p|--uninstall|-u|-h|--help]"
+  echo "Usage: [BACKEND=x11|wayland] $0 [--build|-b|--prebuilt|-p|--uninstall|-u|-h|--help]"
 }
 
 mode=""
@@ -128,9 +140,9 @@ case "$mode" in
       echo "Error: Source files are not available for build mode." >&2
       exit 1
     fi
-    echo "Compiling from source..."
+    echo "Compiling from source ($BACKEND backend)..."
     mkdir -p "$BIN_DIR"
-    (cd "$ROOT_DIR" && go build -trimpath -ldflags="-s -w" -o "$APP_BIN" ./src)
+    (cd "$ROOT_DIR" && go build "${build_tags[@]}" -trimpath -ldflags="-s -w" -o "$APP_BIN" ./src)
     ;;
   prebuilt)
     if [[ ! -f "$APP_BIN" ]]; then

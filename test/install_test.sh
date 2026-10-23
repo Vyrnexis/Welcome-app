@@ -62,6 +62,10 @@ test_invalid_arguments() {
     fail "expected failure for multiple arguments"
   fi
 
+  if DESTDIR="$test_destdir" BACKEND="mir" "$ROOT_DIR/install.sh" --prebuilt >/dev/null 2>&1; then
+    fail "expected failure for unknown BACKEND"
+  fi
+
   if DESTDIR="$test_destdir" PREFIX="relative/prefix" "$ROOT_DIR/install.sh" --prebuilt >/dev/null 2>&1; then
     fail "expected failure for relative PREFIX"
   fi

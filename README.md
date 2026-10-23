@@ -41,7 +41,10 @@ The application is written in Go with the [Fyne](https://fyne.io/) GUI toolkit a
 
 ### Install a published release
 
-Download the Linux x86-64 archive from the [Releases page](https://github.com/Vyrnexis/welcome-app/releases). This archive contains the precompiled binary, desktop entries, app icon, and installer script.
+Download a Linux x86-64 archive from the [Releases page](https://github.com/Vyrnexis/welcome-app/releases). Each archive contains the precompiled binary, desktop entries, app icon, and installer script. Two builds are published; see [Display backend](#display-backend-x11-or-wayland) for the difference:
+
+- `solus-welcome-<version>-linux-x86_64-x11.tar.gz` runs on every edition, including Wayland sessions through XWayland. Choose this one if unsure.
+- `solus-welcome-<version>-linux-x86_64-wayland.tar.gz` runs natively on Wayland sessions (GNOME, KDE Plasma) but cannot start in an X11 session.
 
 The optional `checksums.txt` release asset can verify the archive before extraction when both files are in the same directory:
 
@@ -52,8 +55,8 @@ sha256sum --check checksums.txt
 Extract the archive, enter the extracted directory, and run the installer:
 
 ```bash
-tar -xzf solus-welcome-v0.2.0-linux-x86_64.tar.gz
-cd solus-welcome-v0.2.0
+tar -xzf solus-welcome-v0.2.1-linux-x86_64-x11.tar.gz
+cd solus-welcome-v0.2.1
 ./install.sh
 ```
 
@@ -138,6 +141,25 @@ On Solus, install the development dependencies with:
 sudo eopkg install -c system.devel golang mesalib-devel libxrandr-devel libxcursor-devel libxi-devel libxinerama-devel wayland-devel libxkbcommon-devel libxxf86vm-devel
 ```
 
+## Display backend (X11 or Wayland)
+
+Fyne draws its windows through GLFW, which supports one windowing system per binary, chosen at compile time with the Go build tag `wayland`:
+
+| Build | Command | Runs on |
+| --- | --- | --- |
+| X11 (default) | `go build -trimpath -ldflags="-s -w" -o bin/solus-welcome ./src` | X11 sessions, and Wayland sessions through XWayland |
+| Wayland | `go build -tags wayland -trimpath -ldflags="-s -w" -o bin/solus-welcome ./src` | Wayland sessions only |
+
+The X11 build is the safe default because it works on every Solus edition. The Wayland build gives native Wayland windows (sharper fractional scaling, no XWayland) on GNOME and KDE Plasma, but fails to open a window in X11 sessions such as Xfce.
+
+The installer builds the X11 backend unless told otherwise:
+
+```bash
+BACKEND=wayland ./install.sh --build
+```
+
+Packagers can pass the tag in their build step; [`packaging/package.yml`](packaging/package.yml) notes where.
+
 ## Development
 
 Run the application directly from the repository root:
@@ -182,7 +204,7 @@ Translations live in `assets/translations/` as JSON files using [Fyne's i18n](ht
 
 Every push to `main` and every pull request targeting `main` runs formatting validation, module tidiness check, shell linting, desktop file validation, `go vet`, race-enabled Go tests, application build, and staged installer tests.
 
-Tags beginning with `v` run a separate release job with repository write permission. That job packages the tested build artifact, desktop entries, app icon, installer script, and documentation into a release archive under a versioned top-level directory, verifies archive paths, generates a SHA-256 checksum, and publishes the GitHub release.
+CI also compiles and vets the Wayland backend so both stay buildable. Tags beginning with `v` run a separate release job with repository write permission. That job packages the tested X11 and Wayland build artifacts, each with the desktop entries, app icon, installer script, and documentation, into one release archive per backend under a versioned top-level directory, verifies archive paths, generates SHA-256 checksums, and publishes the GitHub release.
 
 ## Contributing
 

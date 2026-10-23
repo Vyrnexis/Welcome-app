@@ -37,6 +37,8 @@ go run ./src
 ```
 Assets and translations are embedded in the binary. To try a different configuration, place it at `/etc/solus-welcome/config.toml`; it replaces the embedded one if it is valid.
 
+The default build uses the X11 backend, which also runs on Wayland sessions through XWayland. Add `-tags wayland` (or `BACKEND=wayland ./install.sh --build`) for a native Wayland build; see "Display backend" in the README. CI vets and builds both, so check `go vet -tags wayland ./...` when touching platform code.
+
 **Running the Test Suite:**
 We use Fyne's headless test framework and standard Go testing.
 ```bash
